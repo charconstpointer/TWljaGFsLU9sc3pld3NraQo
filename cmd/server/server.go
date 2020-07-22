@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/router"
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/server"
+	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/server/router"
 	"github.com/labstack/gommon/log"
 )
 
