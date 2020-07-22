@@ -1,17 +1,14 @@
 package router
 
 import (
-	"net/http"
-
+	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/server"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 )
 
-func New() *chi.Mux {
+func New(s *server.Server) *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
-	r.MethodFunc("GET", "/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("/"))
-	})
+	r.MethodFunc("GET", "/", s.HandleHome)
 	return r
 }
