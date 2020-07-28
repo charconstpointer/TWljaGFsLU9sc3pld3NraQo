@@ -4,8 +4,9 @@ import (
 	"log"
 	"time"
 
+	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/client"
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/server"
-	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/worker"
+
 	"google.golang.org/grpc"
 )
 
@@ -18,7 +19,7 @@ func main() {
 
 	c := server.NewFetcherServiceClient(conn)
 
-	w := worker.NewFetcherWorker(c)
+	w := client.NewFetcherWorker(c)
 	w.Listen()
 
 	time.Sleep(99999999 * time.Second)

@@ -24,6 +24,9 @@ func (s *Server) HandleCreateMeasure(w http.ResponseWriter, r *http.Request) {
 	}
 	m := measure.NewMeasure(cm.URL, cm.Interval)
 	err := s.measures.CreateMeasure(m)
+	go func() {
+		s.Add <- *m
+	}()
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

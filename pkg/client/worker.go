@@ -1,8 +1,8 @@
-package worker
+package client
 
 import (
 	"context"
-	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -16,11 +16,12 @@ type worker interface {
 }
 
 type FetcherWorker struct {
-	c server.FetcherServiceClient
+	c    server.FetcherServiceClient
+	jobs []*Job
 }
 
 func NewFetcherWorker(c server.FetcherServiceClient) *FetcherWorker {
-	return &FetcherWorker{c}
+	return &FetcherWorker{c, make([]*Job, 0)}
 }
 
 func (w *FetcherWorker) Listen() error {
@@ -31,20 +32,52 @@ func (w *FetcherWorker) Listen() error {
 	if err != nil {
 		return err
 	}
+	go func(w *FetcherWorker) {
+		s, err := w.c.ListenForChanges(context.Background(), &server.ListenForChangesRequest{})
+		if err != nil {
+			log.Printf("%v", err)
+		}
+		for {
+			res, err := s.Recv()
+			if err == io.EOF {
+				log.Print("no more responses")
+				return
+			}
+			if err != nil {
+				log.Print(err)
+				return
+			}
 
+			switch res.Change {
+			case server.Change_DELETED:
+				for _, job := range w.jobs {
+					if job.M.ID == res.MeasureID {
+						job.Done <- struct{}{}
+					}
+				}
+			}
+		}
+
+	}(w)
 	for _, m := range msr.Measures {
-		go func(m *server.Measure, fc server.FetcherServiceClient, ctx context.Context) {
-			log.Printf("Loaded measure : %v\n", m)
-			t := time.NewTicker(time.Duration(m.Interval) * time.Second)
+		j := NewJob(m)
+		w.jobs = append(w.jobs, j)
+		go func(j *Job, fc server.FetcherServiceClient, ctx context.Context) {
+			measure := j.M
+			log.Printf("Loaded measure : %v\n", measure)
+			t := time.NewTicker(time.Duration(measure.Interval) * time.Second)
 			for {
 				select {
 				case _ = <-t.C:
-					fetch(m, w.c)
+					fetch(measure, w.c)
 				case _ = <-ctx.Done():
+					return
+				case _ = <-j.Done:
+					log.Println("Terminating")
 					return
 				}
 			}
-		}(m, w.c, context.Background())
+		}(j, w.c, context.Background())
 	}
 
 	return nil
@@ -66,12 +99,12 @@ func fetch(m *server.Measure, fc server.FetcherServiceClient) {
 	duration = time.Since(start).Milliseconds()
 
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 
 	b, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -79,7 +112,7 @@ func fetch(m *server.Measure, fc server.FetcherServiceClient) {
 	defer cancel()
 	fc.AddProbe(ctx, &server.AddProbeRequest{
 		MeasureID: m.ID,
-		CreatedAt: time.Now().UnixNano(),
+		CreatedAt: time.Now().Unix(),
 		Duration:  float32(float64(duration) / float64(time.Millisecond)),
 		Response:  string(b),
 	})

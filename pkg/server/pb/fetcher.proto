@@ -6,6 +6,7 @@ option go_package = "pkg/server";
 service FetcherService {
         rpc GetMeasures (GetMeasuresRequest) returns (GetMeasuresResponse);
         rpc AddProbe (AddProbeRequest) returns (AddProbeRequest);
+        rpc ListenForChanges (ListenForChangesRequest) returns (stream ListenForChangesResponse);
 }
 
 message Measure {
@@ -20,6 +21,21 @@ message GetMeasuresRequest {
 
 message GetMeasuresResponse {
         repeated Measure measures = 1;
+}
+
+enum Change {
+        DELETED = 0;
+        CREATED = 1;
+        EDITED = 2;
+}
+message ListenForChangesRequest {
+
+}
+
+message ListenForChangesResponse {
+        int32 measureID = 1;
+        Change change = 2;
+        Measure measure = 3;
 }
 
 message AddProbeRequest {

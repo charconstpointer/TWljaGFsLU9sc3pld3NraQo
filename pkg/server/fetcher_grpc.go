@@ -35,6 +35,48 @@ func (s *Server) AddProbe(c context.Context, r *AddProbeRequest) (*AddProbeReque
 	return &AddProbeRequest{}, nil
 }
 
+func (s *Server) ListenForChanges(r *ListenForChangesRequest, svc FetcherService_ListenForChangesServer) error {
+	for {
+		select {
+		case m := <-s.Add:
+			dto := m.AsDto()
+			err := svc.Send(&ListenForChangesResponse{
+				Change:    Change_CREATED,
+				MeasureID: int32(dto.ID),
+				Measure: &Measure{
+					ID:       int32(dto.ID),
+					Interval: int32(dto.Interval),
+					URL:      dto.URL,
+				}})
+			if err != nil {
+				return err
+			}
+		case m := <-s.Edt:
+			dto := m.AsDto()
+			err := svc.Send(&ListenForChangesResponse{
+				Change:    Change_EDITED,
+				MeasureID: int32(dto.ID),
+				Measure: &Measure{
+					ID:       int32(dto.ID),
+					Interval: int32(dto.Interval),
+					URL:      dto.URL,
+				}})
+			if err != nil {
+				return err
+			}
+		case id := <-s.Rmv:
+			err := svc.Send(&ListenForChangesResponse{
+				Change:    Change_EDITED,
+				MeasureID: int32(id),
+				Measure:   nil,
+			})
+			if err != nil {
+				return err
+			}
+		}
+	}
+}
+
 func (s *Server) mustEmbedUnimplementedFetcherServiceServer() {
 
 }
