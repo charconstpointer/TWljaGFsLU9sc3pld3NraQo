@@ -17,6 +17,7 @@ func (s *Server) HandleHome(w http.ResponseWriter, r *http.Request) {
 //HandleCreateMeasurement handles creation of a new measurement
 func (s *Server) HandleCreateMeasurement(w http.ResponseWriter, r *http.Request) {
 	var m measurement.Measurement
+
 	err := json.NewDecoder(r.Body).Decode(&m)
 	if err != nil {
 		log.Error(err)
@@ -33,5 +34,14 @@ func (s *Server) HandleGetMeasurements(w http.ResponseWriter, r *http.Request) {
 		log.Error(err)
 		w.WriteHeader(http.StatusInternalServerError)
 	}
+	w.WriteHeader(http.StatusOK)
+}
+
+//HandleGetHistory returns history of a measurement
+func (s *Server) HandleGetHisotry(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotFound)
+}
+
+func (s *Server) HandleDeleteMeasurement(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
