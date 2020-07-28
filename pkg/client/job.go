@@ -8,7 +8,7 @@ type Job struct {
 }
 
 func NewJob(m *server.Measure) *Job {
-	return &Job{M: m}
+	return &Job{M: m, Done: make(chan struct{}, 1)}
 }
 
 func (j *Job) Cancel() {

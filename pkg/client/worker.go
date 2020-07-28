@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -32,55 +33,74 @@ func (w *FetcherWorker) Listen() error {
 	if err != nil {
 		return err
 	}
-	go func(w *FetcherWorker) {
-		s, err := w.c.ListenForChanges(context.Background(), &server.ListenForChangesRequest{})
-		if err != nil {
-			log.Printf("%v", err)
-		}
-		for {
-			res, err := s.Recv()
-			if err == io.EOF {
-				log.Print("no more responses")
-				return
-			}
-			if err != nil {
-				log.Print(err)
-				return
-			}
-
-			switch res.Change {
-			case server.Change_DELETED:
-				for _, job := range w.jobs {
-					if job.M.ID == res.MeasureID {
-						job.Done <- struct{}{}
-					}
-				}
-			}
-		}
-
-	}(w)
+	go w.listen()
 	for _, m := range msr.Measures {
 		j := NewJob(m)
 		w.jobs = append(w.jobs, j)
-		go func(j *Job, fc server.FetcherServiceClient, ctx context.Context) {
-			measure := j.M
-			log.Printf("Loaded measure : %v\n", measure)
-			t := time.NewTicker(time.Duration(measure.Interval) * time.Second)
-			for {
-				select {
-				case _ = <-t.C:
-					fetch(measure, w.c)
-				case _ = <-ctx.Done():
-					return
-				case _ = <-j.Done:
-					log.Println("Terminating")
-					return
-				}
-			}
-		}(j, w.c, context.Background())
+		go w.exec(j, context.Background())
 	}
 
 	return nil
+}
+
+func (w *FetcherWorker) exec(j *Job, ctx context.Context) {
+	measure := j.M
+	log.Printf("Loaded measure : %v\n", measure)
+	t := time.NewTicker(time.Duration(measure.Interval) * time.Second)
+	for {
+		select {
+		case _ = <-t.C:
+			fetch(measure, w.c)
+		case _ = <-ctx.Done():
+			return
+		case _ = <-j.Done:
+			log.Println("Terminating")
+			return
+		}
+	}
+}
+
+func (w *FetcherWorker) listen() {
+	s, err := w.c.ListenForChanges(context.Background(), &server.ListenForChangesRequest{})
+	if err != nil {
+		log.Printf("%v", err)
+	}
+	for {
+		res, err := s.Recv()
+		if err == io.EOF {
+			log.Print("no more responses")
+			return
+		}
+		if err != nil {
+			log.Print(err)
+			return
+		}
+
+		switch res.Change {
+		case server.Change_DELETED:
+			for _, job := range w.jobs {
+				fmt.Printf("%d == %d", job.M.ID, res.MeasureID)
+				if job.M.ID == res.MeasureID {
+					job.Cancel()
+					fmt.Println("job.Done <- struct{}{}")
+				}
+			}
+			break
+		case server.Change_CREATED:
+			w.jobs = append(w.jobs, NewJob(res.Measure))
+			break
+		case server.Change_EDITED:
+			for _, job := range w.jobs {
+				fmt.Printf("%d == %d", job.M.ID, res.MeasureID)
+				if job.M.ID == res.MeasureID {
+					job.Cancel()
+					job = NewJob(res.Measure)
+				}
+			}
+			break
+		}
+
+	}
 }
 
 func fetch(m *server.Measure, fc server.FetcherServiceClient) {

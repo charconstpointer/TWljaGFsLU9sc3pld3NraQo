@@ -2,6 +2,7 @@ package server
 
 import (
 	context "context"
+	"fmt"
 	"time"
 
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/measure"
@@ -65,8 +66,9 @@ func (s *Server) ListenForChanges(r *ListenForChangesRequest, svc FetcherService
 				return err
 			}
 		case id := <-s.Rmv:
+			fmt.Println("case id := <-s.Rmv:")
 			err := svc.Send(&ListenForChangesResponse{
-				Change:    Change_EDITED,
+				Change:    Change_DELETED,
 				MeasureID: int32(id),
 				Measure:   nil,
 			})
