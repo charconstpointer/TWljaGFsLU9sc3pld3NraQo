@@ -1,0 +1,22 @@
+syntax = "proto3";
+package server;
+
+option go_package = "pkg/server";
+
+service FetcherService {
+        rpc GetMeasures (GetMeasuresRequest) returns (GetMeasuresResponse);
+}
+
+message Measure {
+        int32 ID  = 1;
+        string URL  = 2;
+        int32 interval  = 3;
+}
+
+message GetMeasuresRequest {
+
+}
+
+message GetMeasuresResponse {
+        repeated Measure measures = 1;
+}
