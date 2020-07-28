@@ -1,15 +1,15 @@
 package server
 
 import (
-	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/measurement"
-	"github.com/jmoiron/sqlx"
+	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/measure"
 )
 
+//Server represents measures http server
 type Server struct {
-	db           *sqlx.DB
-	measurements []*measurement.Measurement
+	measures measure.Measures
 }
 
-func NewServer(db *sqlx.DB) *Server {
-	return &Server{measurements: make([]*measurement.Measurement, 0), db: db}
+//NewServer creates new measurement server
+func NewServer(measures measure.Measures) *Server {
+	return &Server{measures: measures}
 }
