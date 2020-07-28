@@ -1,8 +1,13 @@
 package server
 
+import "github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/measure"
+
+//Server represents measures http server
 type Server struct {
+	measures measure.Measures
 }
 
-func NewServer() *Server {
-	return &Server{}
+//NewServer creates new measurement server
+func NewServer(measures measure.Measures) *Server {
+	return &Server{measures}
 }

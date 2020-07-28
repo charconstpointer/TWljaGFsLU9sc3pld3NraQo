@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/measure"
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/server"
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/server/router"
 	"github.com/labstack/gommon/log"
@@ -13,8 +14,8 @@ import (
 func main() {
 	port := flag.Int("port", 8080, "port to listen on for incoming http requests")
 	flag.Parse()
-
-	srv := server.NewServer()
+	repo := measure.NewMeasuresRepo()
+	srv := server.NewServer(repo)
 
 	r := router.New(srv)
 
