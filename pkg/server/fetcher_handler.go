@@ -15,11 +15,22 @@ func (s *Server) HandleHome(w http.ResponseWriter, r *http.Request) {
 
 //HandleCreateMeasure is
 func (s *Server) HandleCreateMeasure(w http.ResponseWriter, r *http.Request) {
-	err := s.measures.CreateMeasure(measure.CreateMeasure{URL: "https://foo.bar", Interval: 60})
+	var cm measure.CreateMeasure
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if err := json.NewDecoder(r.Body).Decode(&cm); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+	}
+
+	err := s.measures.CreateMeasure(cm)
+
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("something went wrong ;;"))
 	}
+
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -30,7 +41,7 @@ func (s *Server) HandleGetAllMeasures(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("something went wrong ;;"))
 	}
-	dtos := make([]measure.Dto, len(m))
+	var dtos []measure.Dto
 
 	for _, msr := range m {
 		dtos = append(dtos, msr.AsDto())
