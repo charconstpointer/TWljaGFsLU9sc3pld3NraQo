@@ -3,8 +3,10 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/measure"
+	"github.com/go-chi/chi"
 )
 
 //HandleHome is
@@ -16,9 +18,6 @@ func (s *Server) HandleHome(w http.ResponseWriter, r *http.Request) {
 //HandleCreateMeasure is
 func (s *Server) HandleCreateMeasure(w http.ResponseWriter, r *http.Request) {
 	var cm measure.CreateMeasure
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
 
 	if err := json.NewDecoder(r.Body).Decode(&cm); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -52,4 +51,17 @@ func (s *Server) HandleGetAllMeasures(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("could not encode measures"))
 	}
 	w.WriteHeader(http.StatusOK)
+}
+
+//HandleDeleteMeasure is
+func (s *Server) HandleDeleteMeasure(w http.ResponseWriter, r *http.Request) {
+	ID, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+	}
+	err = s.measures.DeleteMeasure(ID)
+
+	if err != nil {
+		w.WriteHeader(http.StatusNoContent)
+	}
 }
