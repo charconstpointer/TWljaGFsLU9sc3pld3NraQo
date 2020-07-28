@@ -22,8 +22,8 @@ func (s *Server) HandleCreateMeasure(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&cm); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 	}
-
-	err := s.measures.CreateMeasure(cm)
+	m := measure.NewMeasure(cm.URL, cm.Interval)
+	err := s.measures.CreateMeasure(m)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -64,4 +64,30 @@ func (s *Server) HandleDeleteMeasure(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusNoContent)
 	}
+}
+
+//HandleGetHistory is
+func (s *Server) HandleGetHistory(w http.ResponseWriter, r *http.Request) {
+	ID, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+	}
+
+	m, err := s.measures.GetMeasure(ID)
+
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+	}
+
+	var dtos []measure.ProbeDto
+
+	for _, p := range m.Probes() {
+		dtos = append(dtos, p.AsDto())
+	}
+
+	if err := json.NewEncoder(w).Encode(dtos); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("could not encode probes"))
+	}
+	w.WriteHeader(http.StatusOK)
 }

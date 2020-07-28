@@ -17,12 +17,11 @@ func NewMeasuresRepo() *MeasuresRepo {
 }
 
 //CreateMeasure persists new Measure
-func (msr *MeasuresRepo) CreateMeasure(c CreateMeasure) error {
+func (msr *MeasuresRepo) CreateMeasure(m *Measure) error {
 	msr.mu.Lock()
 	defer msr.mu.Unlock()
-
-	measure := c.AsEntity()
-	msr.m = append(msr.m, measure)
+	m.AddProbe(NewProbe("ok", 123.4))
+	msr.m = append(msr.m, m)
 
 	return nil
 }
@@ -56,7 +55,7 @@ func (msr *MeasuresRepo) GetMeasures() ([]*Measure, error) {
 }
 
 //UpdateMeasure is
-func (msr *MeasuresRepo) UpdateMeasure(c CreateMeasure) error {
+func (msr *MeasuresRepo) UpdateMeasure(m *Measure) error {
 	return nil
 }
 

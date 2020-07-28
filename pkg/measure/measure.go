@@ -1,11 +1,29 @@
 package measure
 
+import (
+	"math/rand"
+)
+
 //Measure represents set of properties for a worker to fetch and work on
 type Measure struct {
 	id       int
 	url      string
 	interval int
-	probes   []interface{}
+	probes   []*Probe
+}
+
+//NewMeasure is
+func NewMeasure(url string, interval int) *Measure {
+	return &Measure{
+		id:       rand.Intn(839201),
+		url:      url,
+		interval: interval,
+	}
+}
+
+//AddProbe adds new probe
+func (m *Measure) AddProbe(p *Probe) {
+	m.probes = append(m.probes, p)
 }
 
 //CreateMeasure represents model that user has to provide in order to create new measure
@@ -27,6 +45,16 @@ func (c CreateMeasure) AsEntity() *Measure {
 		url:      c.URL,
 		interval: c.Interval,
 	}
+}
+
+//Probes returns probes for a given measure
+func (m *Measure) Probes() []*Probe {
+	// var probes []ProbeDto
+	// for _, p := range m.probes {
+	// 	probes = append(probes, p.AsDto())
+	// }
+	// return probes
+	return m.probes
 }
 
 //AsDto returns a measure dto

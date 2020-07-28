@@ -16,6 +16,7 @@ func New(s *server.Server) *chi.Mux {
 	r.MethodFunc("GET", "/", s.HandleHome)
 	r.MethodFunc("GET", "/api/fetcher", s.HandleGetAllMeasures)
 	r.MethodFunc("POST", "/api/fetcher", s.HandleCreateMeasure)
+	r.MethodFunc("GET", "/api/fetcher/{id}", s.HandleGetHistory)
 	r.MethodFunc("DELETE", "/api/fetcher/{id}", s.HandleDeleteMeasure)
 
 	return r
