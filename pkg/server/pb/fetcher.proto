@@ -5,6 +5,7 @@ option go_package = "pkg/server";
 
 service FetcherService {
         rpc GetMeasures (GetMeasuresRequest) returns (GetMeasuresResponse);
+        rpc AddProbe (AddProbeRequest) returns (AddProbeRequest);
 }
 
 message Measure {
@@ -19,4 +20,15 @@ message GetMeasuresRequest {
 
 message GetMeasuresResponse {
         repeated Measure measures = 1;
+}
+
+message AddProbeRequest {
+        int32 measureID = 1;
+        string response = 2;
+        float duration = 3;
+        int64 createdAt = 4;
+
+}
+
+message AddProbeResponse {
 }

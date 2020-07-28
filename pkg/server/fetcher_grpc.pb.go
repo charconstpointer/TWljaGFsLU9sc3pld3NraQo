@@ -18,6 +18,7 @@ const _ = grpc.SupportPackageIsVersion6
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type FetcherServiceClient interface {
 	GetMeasures(ctx context.Context, in *GetMeasuresRequest, opts ...grpc.CallOption) (*GetMeasuresResponse, error)
+	AddProbe(ctx context.Context, in *AddProbeRequest, opts ...grpc.CallOption) (*AddProbeRequest, error)
 }
 
 type fetcherServiceClient struct {
@@ -37,11 +38,21 @@ func (c *fetcherServiceClient) GetMeasures(ctx context.Context, in *GetMeasuresR
 	return out, nil
 }
 
+func (c *fetcherServiceClient) AddProbe(ctx context.Context, in *AddProbeRequest, opts ...grpc.CallOption) (*AddProbeRequest, error) {
+	out := new(AddProbeRequest)
+	err := c.cc.Invoke(ctx, "/server.FetcherService/AddProbe", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // FetcherServiceServer is the server API for FetcherService service.
 // All implementations must embed UnimplementedFetcherServiceServer
 // for forward compatibility
 type FetcherServiceServer interface {
 	GetMeasures(context.Context, *GetMeasuresRequest) (*GetMeasuresResponse, error)
+	AddProbe(context.Context, *AddProbeRequest) (*AddProbeRequest, error)
 	mustEmbedUnimplementedFetcherServiceServer()
 }
 
@@ -51,6 +62,9 @@ type UnimplementedFetcherServiceServer struct {
 
 func (*UnimplementedFetcherServiceServer) GetMeasures(context.Context, *GetMeasuresRequest) (*GetMeasuresResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMeasures not implemented")
+}
+func (*UnimplementedFetcherServiceServer) AddProbe(context.Context, *AddProbeRequest) (*AddProbeRequest, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddProbe not implemented")
 }
 func (*UnimplementedFetcherServiceServer) mustEmbedUnimplementedFetcherServiceServer() {}
 
@@ -76,6 +90,24 @@ func _FetcherService_GetMeasures_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _FetcherService_AddProbe_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddProbeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FetcherServiceServer).AddProbe(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/server.FetcherService/AddProbe",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FetcherServiceServer).AddProbe(ctx, req.(*AddProbeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _FetcherService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "server.FetcherService",
 	HandlerType: (*FetcherServiceServer)(nil),
@@ -83,6 +115,10 @@ var _FetcherService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetMeasures",
 			Handler:    _FetcherService_GetMeasures_Handler,
+		},
+		{
+			MethodName: "AddProbe",
+			Handler:    _FetcherService_AddProbe_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
