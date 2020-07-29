@@ -64,12 +64,9 @@ func (s *Server) HandleDeleteMeasure(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 	}
 	err = s.measures.DeleteMeasure(ID)
-	go func() {
-		s.Rmv <- ID
-	}()
 	select {
 	case s.Rmv <- ID:
-		log.Println("notification sent")
+		log.Printf("notification sent  %d", ID)
 	default:
 		log.Println("skipping sending notification")
 	}

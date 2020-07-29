@@ -2,6 +2,7 @@ package server
 
 import (
 	context "context"
+	"fmt"
 	"log"
 	"time"
 
@@ -41,38 +42,13 @@ func (s *Server) ListenForChanges(r *ListenForChangesRequest, stream FetcherServ
 	for {
 		select {
 		case m := <-s.Add:
-			dto := m.AsDto()
-			for _, s := range s.streams {
-				err := (*s).Send(&ListenForChangesResponse{
-					Change:    Change_CREATED,
-					MeasureID: int32(dto.ID),
-					Measure: &Measure{
-						ID:       int32(dto.ID),
-						Interval: int32(dto.Interval),
-						URL:      dto.URL,
-					}})
-				if err != nil {
-					log.Println(err)
-					continue
-				}
-			}
+			fmt.Println("case m := <-s.Add:")
+			s.propagate(m, Change_CREATED)
 		case m := <-s.Edt:
-			dto := m.AsDto()
-			for _, s := range s.streams {
-				err := (*s).Send(&ListenForChangesResponse{
-					Change:    Change_CREATED,
-					MeasureID: int32(dto.ID),
-					Measure: &Measure{
-						ID:       int32(dto.ID),
-						Interval: int32(dto.Interval),
-						URL:      dto.URL,
-					}})
-				if err != nil {
-					log.Println(err)
-					continue
-				}
-			}
+			fmt.Println("case m := <-s.Edt:")
+			s.propagate(m, Change_EDITED)
 		case id := <-s.Rmv:
+			fmt.Printf("RMV %d\n", id)
 			for _, s := range s.streams {
 				err := (*s).Send(&ListenForChangesResponse{
 					Change:    Change_DELETED,
@@ -90,4 +66,22 @@ func (s *Server) ListenForChanges(r *ListenForChangesRequest, stream FetcherServ
 
 func (s *Server) mustEmbedUnimplementedFetcherServiceServer() {
 
+}
+
+func (s *Server) propagate(m measure.Measure, c Change) {
+	dto := m.AsDto()
+	for _, s := range s.streams {
+		err := (*s).Send(&ListenForChangesResponse{
+			Change:    Change_CREATED,
+			MeasureID: int32(dto.ID),
+			Measure: &Measure{
+				ID:       int32(dto.ID),
+				Interval: int32(dto.Interval),
+				URL:      dto.URL,
+			}})
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+	}
 }
