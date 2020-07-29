@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"net"
 	"net/http"
+	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher"
@@ -16,24 +20,22 @@ import (
 )
 
 var (
-	httpPort := flag.Int("http", 8080, "port to listen on for incoming http requests")
-	grpcPort := flag.Int("grpc", 8082, "port to listen on for incoming grpc requests")
+	httpPort = flag.Int("http", 8080, "port to listen on for incoming http requests")
+	grpcPort = flag.Int("grpc", 8082, "port to listen on for incoming grpc requests")
+
+	grpcServer *grpc.Server
+	httpServer *http.Server
 )
 
 func main() {
 	flag.Parse()
 
-	
-	
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(interrupt)
 
 	repo := measure.NewMeasuresRepo()
 	srv := fetcher.NewFetcher(repo)
-	r := router.New(srv)
-
-	s := &http.Server{
-		Addr:    httpAddr,
-		Handler: r,
-	}
 
 	go func() {
 		grpcAddr := ":" + strconv.Itoa(*grpcPort)
@@ -42,19 +44,39 @@ func main() {
 			log.Errorf("failed to listen: %v", err)
 		}
 
-		gs := grpc.NewServer()
+		grpcServer = grpc.NewServer()
 
-		fetcher.RegisterFetcherServiceServer(gs, srv)
+		fetcher.RegisterFetcherServiceServer(grpcServer, srv)
 		log.Infof("Starting gRPC server %v", time.Now())
-		gs.Serve(lis)
+		grpcServer.Serve(lis)
 	}()
 
 	go func() {
 		log.Infof("Starting http server %v", time.Now())
-	httpAddr := ":" + strconv.Itoa(*httpPort)
-	if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Error(err)
-	}
+		httpAddr := ":" + strconv.Itoa(*httpPort)
+		r := router.New(srv)
+
+		httpServer = &http.Server{
+			Addr:    httpAddr,
+			Handler: r,
+		}
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Error(err)
+		}
 	}()
+	select {
+	case <-interrupt:
+		break
+	}
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+
+	if httpServer != nil {
+		_ = httpServer.Shutdown(shutdownCtx)
+	}
+	if grpcServer != nil {
+		grpcServer.GracefulStop()
+	}
 
 }
