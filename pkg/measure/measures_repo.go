@@ -42,6 +42,8 @@ func (msr *MeasuresRepo) Delete(ID int) error {
 
 //Get is
 func (msr *MeasuresRepo) Get(ID int) (*Measure, error) {
+	msr.mu.RLock()
+	defer msr.mu.RUnlock()
 	i, m := msr.find(ID)
 	if i == -1 {
 		return nil, fmt.Errorf("measure with id %d could not be found", ID)
@@ -51,11 +53,15 @@ func (msr *MeasuresRepo) Get(ID int) (*Measure, error) {
 
 //GetAll returns all active measures
 func (msr *MeasuresRepo) GetAll() ([]*Measure, error) {
+	msr.mu.RLock()
+	defer msr.mu.RUnlock()
 	return msr.m, nil
 }
 
 //Update is
 func (msr *MeasuresRepo) Update(ID int, interval int) error {
+	msr.mu.Lock()
+	defer msr.mu.Unlock()
 	for _, msr := range msr.m {
 		if msr.id == ID {
 			msr.interval = interval
@@ -67,6 +73,8 @@ func (msr *MeasuresRepo) Update(ID int, interval int) error {
 
 //GetByUrl is
 func (msr *MeasuresRepo) GetByUrl(URL string) (*Measure, error) {
+	msr.mu.RLock()
+	defer msr.mu.RUnlock()
 	for _, m := range msr.m {
 		if m.url == URL {
 			return m, nil
@@ -76,6 +84,8 @@ func (msr *MeasuresRepo) GetByUrl(URL string) (*Measure, error) {
 }
 
 func (msr *MeasuresRepo) find(ID int) (int, *Measure) {
+	msr.mu.RLock()
+	defer msr.mu.RUnlock()
 	for i, m := range msr.m {
 		if m.id == ID {
 			return i, m
