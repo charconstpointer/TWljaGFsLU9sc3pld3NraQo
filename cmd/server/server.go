@@ -7,25 +7,27 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher"
+	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher/router"
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/measure"
-	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/server"
-	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/server/router"
 	"google.golang.org/grpc"
 
 	"github.com/labstack/gommon/log"
 )
 
-func main() {
+var (
 	httpPort := flag.Int("http", 8080, "port to listen on for incoming http requests")
 	grpcPort := flag.Int("grpc", 8082, "port to listen on for incoming grpc requests")
+)
 
+func main() {
 	flag.Parse()
 
-	httpAddr := ":" + strconv.Itoa(*httpPort)
-	grpcAddr := ":" + strconv.Itoa(*grpcPort)
+	
+	
 
 	repo := measure.NewMeasuresRepo()
-	srv := server.NewFetcher(repo)
+	srv := fetcher.NewFetcher(repo)
 	r := router.New(srv)
 
 	s := &http.Server{
@@ -33,13 +35,8 @@ func main() {
 		Handler: r,
 	}
 
-	log.Infof("Starting http server %v", time.Now())
-	if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Error(err)
-	}
-
 	go func() {
-
+		grpcAddr := ":" + strconv.Itoa(*grpcPort)
 		lis, err := net.Listen("tcp", grpcAddr)
 		if err != nil {
 			log.Errorf("failed to listen: %v", err)
@@ -47,8 +44,17 @@ func main() {
 
 		gs := grpc.NewServer()
 
-		server.RegisterFetcherServiceServer(gs, srv)
+		fetcher.RegisterFetcherServiceServer(gs, srv)
 		log.Infof("Starting gRPC server %v", time.Now())
 		gs.Serve(lis)
 	}()
+
+	go func() {
+		log.Infof("Starting http server %v", time.Now())
+	httpAddr := ":" + strconv.Itoa(*httpPort)
+	if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Error(err)
+	}
+	}()
+
 }

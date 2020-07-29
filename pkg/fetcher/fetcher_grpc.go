@@ -1,4 +1,4 @@
-package server
+package fetcher
 
 import (
 	context "context"
@@ -8,7 +8,7 @@ import (
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/measure"
 )
 
-func (s *Server) GetMeasures(context.Context, *GetMeasuresRequest) (*GetMeasuresResponse, error) {
+func (s *Fetcher) GetMeasures(context.Context, *GetMeasuresRequest) (*GetMeasuresResponse, error) {
 	msrs, err := s.measures.GetMeasures()
 	if err != nil {
 		return nil, err
@@ -26,7 +26,7 @@ func (s *Server) GetMeasures(context.Context, *GetMeasuresRequest) (*GetMeasures
 
 }
 
-func (s *Server) AddProbe(c context.Context, r *AddProbeRequest) (*AddProbeResponse, error) {
+func (s *Fetcher) AddProbe(c context.Context, r *AddProbeRequest) (*AddProbeResponse, error) {
 	m, err := s.measures.GetMeasure(int(r.MeasureID))
 	if err != nil {
 		return nil, err
@@ -36,7 +36,7 @@ func (s *Server) AddProbe(c context.Context, r *AddProbeRequest) (*AddProbeRespo
 	return &AddProbeResponse{}, nil
 }
 
-func (s *Server) ListenForChanges(r *ListenForChangesRequest, stream FetcherService_ListenForChangesServer) error {
+func (s *Fetcher) ListenForChanges(r *ListenForChangesRequest, stream FetcherService_ListenForChangesServer) error {
 	s.streams = append(s.streams, &stream)
 	for {
 		select {
@@ -60,11 +60,11 @@ func (s *Server) ListenForChanges(r *ListenForChangesRequest, stream FetcherServ
 	}
 }
 
-func (s *Server) mustEmbedUnimplementedFetcherServiceServer() {
+func (s *Fetcher) mustEmbedUnimplementedFetcherServiceServer() {
 
 }
 
-func (s *Server) propagate(m measure.Measure, c Change) {
+func (s *Fetcher) propagate(m measure.Measure, c Change) {
 	dto := m.AsDto()
 	for _, s := range s.streams {
 		err := (*s).Send(&ListenForChangesResponse{

@@ -3,13 +3,13 @@ package router
 import (
 	"net/http"
 
-	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/server"
+	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 )
 
 //New is
-func New(s *server.Server) *chi.Mux {
+func New(s *fetcher.Fetcher) *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(contentTypeJSON)

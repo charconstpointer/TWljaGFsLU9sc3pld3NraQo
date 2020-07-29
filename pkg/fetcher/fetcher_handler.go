@@ -1,4 +1,4 @@
-package server
+package fetcher
 
 import (
 	"encoding/json"
@@ -12,13 +12,13 @@ import (
 )
 
 //HandleHome is
-func (s *Server) HandleHome(w http.ResponseWriter, r *http.Request) {
+func (s *Fetcher) HandleHome(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("home"))
 }
 
 //HandleCreateMeasure is
-func (s *Server) HandleCreateMeasure(w http.ResponseWriter, r *http.Request) {
+func (s *Fetcher) HandleCreateMeasure(w http.ResponseWriter, r *http.Request) {
 	var cm measure.CreateMeasure
 
 	if err := json.NewDecoder(r.Body).Decode(&cm); err != nil {
@@ -46,7 +46,7 @@ func (s *Server) HandleCreateMeasure(w http.ResponseWriter, r *http.Request) {
 }
 
 //HandleGetAllMeasures is
-func (s *Server) HandleGetAllMeasures(w http.ResponseWriter, r *http.Request) {
+func (s *Fetcher) HandleGetAllMeasures(w http.ResponseWriter, r *http.Request) {
 	m, err := s.measures.GetMeasures()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -66,7 +66,7 @@ func (s *Server) HandleGetAllMeasures(w http.ResponseWriter, r *http.Request) {
 }
 
 //HandleDeleteMeasure is
-func (s *Server) HandleDeleteMeasure(w http.ResponseWriter, r *http.Request) {
+func (s *Fetcher) HandleDeleteMeasure(w http.ResponseWriter, r *http.Request) {
 	ID, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -85,7 +85,7 @@ func (s *Server) HandleDeleteMeasure(w http.ResponseWriter, r *http.Request) {
 }
 
 //HandleGetHistory is
-func (s *Server) HandleGetHistory(w http.ResponseWriter, r *http.Request) {
+func (s *Fetcher) HandleGetHistory(w http.ResponseWriter, r *http.Request) {
 	ID, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
