@@ -42,6 +42,7 @@ func main() {
 		log.Infof("Starting gRPC server %v", time.Now())
 		gs.Serve(lis)
 	}()
+
 	log.Infof("Starting http server %v", time.Now())
 	if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Error(err)

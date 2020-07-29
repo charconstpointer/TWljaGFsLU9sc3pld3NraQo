@@ -2,7 +2,6 @@ package server
 
 import (
 	context "context"
-	"fmt"
 	"log"
 	"time"
 
@@ -42,13 +41,10 @@ func (s *Server) ListenForChanges(r *ListenForChangesRequest, stream FetcherServ
 	for {
 		select {
 		case m := <-s.Add:
-			fmt.Println("case m := <-s.Add:")
 			s.propagate(m, Change_CREATED)
 		case m := <-s.Edt:
-			fmt.Println("case m := <-s.Edt:")
 			s.propagate(m, Change_EDITED)
 		case id := <-s.Rmv:
-			fmt.Printf("RMV %d\n", id)
 			for _, s := range s.streams {
 				err := (*s).Send(&ListenForChangesResponse{
 					Change:    Change_DELETED,

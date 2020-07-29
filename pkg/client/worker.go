@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -43,7 +42,7 @@ func (w *FetcherWorker) Listen() error {
 	return nil
 }
 
-func (w *FetcherWorker) exec(j *Job, ctx context.Context) {
+func (w *FetcherWorker) exec(ctx context.Context, j *Job) {
 	measure := j.M
 	log.Printf("Loaded measure : %v\n", measure)
 	t := time.NewTicker(time.Duration(measure.Interval) * time.Second)
@@ -85,13 +84,11 @@ func (w *FetcherWorker) listen() {
 			log.Print(err)
 			return
 		}
-		fmt.Println(res.Change)
+
 		switch res.Change {
 		case server.Change_DELETED:
 			for _, job := range w.jobs {
-				log.Printf("cancelling measure job %v", res.Measure)
 				if job.M.ID == res.MeasureID {
-					log.Printf("cancelling measure job %v", res.Measure)
 					job.Cancel()
 				}
 			}
@@ -118,7 +115,7 @@ func (w *FetcherWorker) manageJobs() {
 	for {
 		select {
 		case m := <-w.queue:
-			go w.exec(NewJob(m), context.Background())
+			go w.exec(context.Background(), NewJob(m))
 		}
 	}
 }
