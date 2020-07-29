@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -17,12 +16,13 @@ type worker interface {
 }
 
 type FetcherWorker struct {
-	c    server.FetcherServiceClient
-	jobs []*Job
+	c     server.FetcherServiceClient
+	jobs  []*Job
+	queue chan *server.Measure
 }
 
 func NewFetcherWorker(c server.FetcherServiceClient) *FetcherWorker {
-	return &FetcherWorker{c, make([]*Job, 0)}
+	return &FetcherWorker{c, make([]*Job, 0), make(chan *server.Measure)}
 }
 
 func (w *FetcherWorker) Listen() error {
@@ -34,10 +34,9 @@ func (w *FetcherWorker) Listen() error {
 		return err
 	}
 	go w.listen()
+	go w.manageJobs()
 	for _, m := range msr.Measures {
-		j := NewJob(m)
-		w.jobs = append(w.jobs, j)
-		go w.exec(j, context.Background())
+		w.queue <- m
 	}
 
 	return nil
@@ -50,11 +49,20 @@ func (w *FetcherWorker) exec(j *Job, ctx context.Context) {
 	for {
 		select {
 		case _ = <-t.C:
-			fetch(measure, w.c)
+			d, b, err := fetch(measure, w.c)
+			if err != nil {
+				log.Print(err)
+				continue
+			}
+			err = w.saveProbe(measure.ID, d, string(b))
+			if err != nil {
+				log.Print(err)
+				continue
+			}
 		case _ = <-ctx.Done():
 			return
 		case _ = <-j.Done:
-			log.Println("Terminating")
+			log.Printf("terminating measure job %v", j.M)
 			return
 		}
 	}
@@ -79,20 +87,20 @@ func (w *FetcherWorker) listen() {
 		switch res.Change {
 		case server.Change_DELETED:
 			for _, job := range w.jobs {
-				fmt.Printf("%d == %d", job.M.ID, res.MeasureID)
+				log.Printf("cancelling measure job %v", res.Measure)
 				if job.M.ID == res.MeasureID {
 					job.Cancel()
-					fmt.Println("job.Done <- struct{}{}")
 				}
 			}
 			break
 		case server.Change_CREATED:
-			w.jobs = append(w.jobs, NewJob(res.Measure))
+			log.Printf("enqueuing new measure %v to be executed", res.Measure)
+			w.queue <- res.Measure
 			break
 		case server.Change_EDITED:
 			for _, job := range w.jobs {
-				fmt.Printf("%d == %d", job.M.ID, res.MeasureID)
 				if job.M.ID == res.MeasureID {
+					log.Printf("cancelling measure job %v", res.Measure)
 					job.Cancel()
 					job = NewJob(res.Measure)
 				}
@@ -103,7 +111,16 @@ func (w *FetcherWorker) listen() {
 	}
 }
 
-func fetch(m *server.Measure, fc server.FetcherServiceClient) {
+func (w *FetcherWorker) manageJobs() {
+	for {
+		select {
+		case m := <-w.queue:
+			go w.exec(NewJob(m), context.Background())
+		}
+	}
+}
+
+func fetch(m *server.Measure, fc server.FetcherServiceClient) (int64, []byte, error) {
 	log.Printf("Fetching : %s\n", m.URL)
 
 	var start time.Time
@@ -119,21 +136,28 @@ func fetch(m *server.Measure, fc server.FetcherServiceClient) {
 	duration = time.Since(start).Milliseconds()
 
 	if err != nil {
-		log.Println(err)
+		return -1, nil, err
 	}
-
 	b, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		log.Println(err)
+		return -1, nil, err
 	}
+	return duration, b, nil
+}
+
+func (w *FetcherWorker) saveProbe(probeID int32, duration int64, response string) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-
 	defer cancel()
-	fc.AddProbe(ctx, &server.AddProbeRequest{
-		MeasureID: m.ID,
+
+	_, err := w.c.AddProbe(ctx, &server.AddProbeRequest{
+		MeasureID: probeID,
 		CreatedAt: time.Now().Unix(),
 		Duration:  float32(float64(duration) / float64(time.Millisecond)),
-		Response:  string(b),
+		Response:  response,
 	})
+	if err != nil {
+		return err
+	}
+	return nil
 }

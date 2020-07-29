@@ -5,7 +5,7 @@ option go_package = "pkg/server";
 
 service FetcherService {
         rpc GetMeasures (GetMeasuresRequest) returns (GetMeasuresResponse);
-        rpc AddProbe (AddProbeRequest) returns (AddProbeRequest);
+        rpc AddProbe (AddProbeRequest) returns (AddProbeResponse);
         rpc ListenForChanges (ListenForChangesRequest) returns (stream ListenForChangesResponse);
 }
 

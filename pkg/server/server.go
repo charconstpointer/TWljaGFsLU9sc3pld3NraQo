@@ -10,6 +10,7 @@ type Server struct {
 	Add      chan measure.Measure
 	Rmv      chan int
 	Edt      chan measure.Measure
+	streams  []*FetcherService_ListenForChangesServer
 }
 
 //NewServer creates new measurement server

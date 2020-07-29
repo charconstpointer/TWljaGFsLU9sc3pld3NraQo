@@ -18,7 +18,7 @@ const _ = grpc.SupportPackageIsVersion6
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type FetcherServiceClient interface {
 	GetMeasures(ctx context.Context, in *GetMeasuresRequest, opts ...grpc.CallOption) (*GetMeasuresResponse, error)
-	AddProbe(ctx context.Context, in *AddProbeRequest, opts ...grpc.CallOption) (*AddProbeRequest, error)
+	AddProbe(ctx context.Context, in *AddProbeRequest, opts ...grpc.CallOption) (*AddProbeResponse, error)
 	ListenForChanges(ctx context.Context, in *ListenForChangesRequest, opts ...grpc.CallOption) (FetcherService_ListenForChangesClient, error)
 }
 
@@ -39,8 +39,8 @@ func (c *fetcherServiceClient) GetMeasures(ctx context.Context, in *GetMeasuresR
 	return out, nil
 }
 
-func (c *fetcherServiceClient) AddProbe(ctx context.Context, in *AddProbeRequest, opts ...grpc.CallOption) (*AddProbeRequest, error) {
-	out := new(AddProbeRequest)
+func (c *fetcherServiceClient) AddProbe(ctx context.Context, in *AddProbeRequest, opts ...grpc.CallOption) (*AddProbeResponse, error) {
+	out := new(AddProbeResponse)
 	err := c.cc.Invoke(ctx, "/server.FetcherService/AddProbe", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -85,7 +85,7 @@ func (x *fetcherServiceListenForChangesClient) Recv() (*ListenForChangesResponse
 // for forward compatibility
 type FetcherServiceServer interface {
 	GetMeasures(context.Context, *GetMeasuresRequest) (*GetMeasuresResponse, error)
-	AddProbe(context.Context, *AddProbeRequest) (*AddProbeRequest, error)
+	AddProbe(context.Context, *AddProbeRequest) (*AddProbeResponse, error)
 	ListenForChanges(*ListenForChangesRequest, FetcherService_ListenForChangesServer) error
 	mustEmbedUnimplementedFetcherServiceServer()
 }
@@ -97,7 +97,7 @@ type UnimplementedFetcherServiceServer struct {
 func (*UnimplementedFetcherServiceServer) GetMeasures(context.Context, *GetMeasuresRequest) (*GetMeasuresResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMeasures not implemented")
 }
-func (*UnimplementedFetcherServiceServer) AddProbe(context.Context, *AddProbeRequest) (*AddProbeRequest, error) {
+func (*UnimplementedFetcherServiceServer) AddProbe(context.Context, *AddProbeRequest) (*AddProbeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddProbe not implemented")
 }
 func (*UnimplementedFetcherServiceServer) ListenForChanges(*ListenForChangesRequest, FetcherService_ListenForChangesServer) error {

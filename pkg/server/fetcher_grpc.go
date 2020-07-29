@@ -2,7 +2,7 @@ package server
 
 import (
 	context "context"
-	"fmt"
+	"log"
 	"time"
 
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/measure"
@@ -26,54 +26,63 @@ func (s *Server) GetMeasures(context.Context, *GetMeasuresRequest) (*GetMeasures
 
 }
 
-func (s *Server) AddProbe(c context.Context, r *AddProbeRequest) (*AddProbeRequest, error) {
+func (s *Server) AddProbe(c context.Context, r *AddProbeRequest) (*AddProbeResponse, error) {
 	m, err := s.measures.GetMeasure(int(r.MeasureID))
 	if err != nil {
 		return nil, err
 	}
 	p := measure.NewProbe(r.Response, float64(r.Duration), float32(time.Unix(r.CreatedAt, 0).Unix())/float32(time.Millisecond))
 	m.AddProbe(p)
-	return &AddProbeRequest{}, nil
+	return &AddProbeResponse{}, nil
 }
 
-func (s *Server) ListenForChanges(r *ListenForChangesRequest, svc FetcherService_ListenForChangesServer) error {
+func (s *Server) ListenForChanges(r *ListenForChangesRequest, stream FetcherService_ListenForChangesServer) error {
+	s.streams = append(s.streams, &stream)
 	for {
 		select {
 		case m := <-s.Add:
 			dto := m.AsDto()
-			err := svc.Send(&ListenForChangesResponse{
-				Change:    Change_CREATED,
-				MeasureID: int32(dto.ID),
-				Measure: &Measure{
-					ID:       int32(dto.ID),
-					Interval: int32(dto.Interval),
-					URL:      dto.URL,
-				}})
-			if err != nil {
-				return err
+			for _, s := range s.streams {
+				err := (*s).Send(&ListenForChangesResponse{
+					Change:    Change_CREATED,
+					MeasureID: int32(dto.ID),
+					Measure: &Measure{
+						ID:       int32(dto.ID),
+						Interval: int32(dto.Interval),
+						URL:      dto.URL,
+					}})
+				if err != nil {
+					log.Println(err)
+					continue
+				}
 			}
 		case m := <-s.Edt:
 			dto := m.AsDto()
-			err := svc.Send(&ListenForChangesResponse{
-				Change:    Change_EDITED,
-				MeasureID: int32(dto.ID),
-				Measure: &Measure{
-					ID:       int32(dto.ID),
-					Interval: int32(dto.Interval),
-					URL:      dto.URL,
-				}})
-			if err != nil {
-				return err
+			for _, s := range s.streams {
+				err := (*s).Send(&ListenForChangesResponse{
+					Change:    Change_CREATED,
+					MeasureID: int32(dto.ID),
+					Measure: &Measure{
+						ID:       int32(dto.ID),
+						Interval: int32(dto.Interval),
+						URL:      dto.URL,
+					}})
+				if err != nil {
+					log.Println(err)
+					continue
+				}
 			}
 		case id := <-s.Rmv:
-			fmt.Println("case id := <-s.Rmv:")
-			err := svc.Send(&ListenForChangesResponse{
-				Change:    Change_DELETED,
-				MeasureID: int32(id),
-				Measure:   nil,
-			})
-			if err != nil {
-				return err
+			for _, s := range s.streams {
+				err := (*s).Send(&ListenForChangesResponse{
+					Change:    Change_DELETED,
+					MeasureID: int32(id),
+					Measure:   nil,
+				})
+				if err != nil {
+					log.Println(err)
+					continue
+				}
 			}
 		}
 	}
