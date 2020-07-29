@@ -14,6 +14,7 @@ import (
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher"
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher/router"
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/measure"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 
 	"github.com/labstack/gommon/log"
@@ -37,7 +38,12 @@ func main() {
 	repo := measure.NewMeasuresRepo()
 	srv := fetcher.NewFetcher(repo)
 
-	go func() {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
 		grpcAddr := ":" + strconv.Itoa(*grpcPort)
 		lis, err := net.Listen("tcp", grpcAddr)
 		if err != nil {
@@ -48,10 +54,10 @@ func main() {
 
 		fetcher.RegisterFetcherServiceServer(grpcServer, srv)
 		log.Infof("Starting gRPC server %v", time.Now())
-		grpcServer.Serve(lis)
-	}()
+		return grpcServer.Serve(lis)
+	})
 
-	go func() {
+	g.Go(func() error {
 		log.Infof("Starting http server %v", time.Now())
 		httpAddr := ":" + strconv.Itoa(*httpPort)
 		r := router.New(srv)
@@ -61,9 +67,11 @@ func main() {
 			Handler: r,
 		}
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Error(err)
+			return err
 		}
-	}()
+		return nil
+	})
+
 	select {
 	case <-interrupt:
 		break
@@ -77,6 +85,11 @@ func main() {
 	}
 	if grpcServer != nil {
 		grpcServer.GracefulStop()
+	}
+
+	err := g.Wait()
+	if err != nil {
+		os.Exit(2)
 	}
 
 }
