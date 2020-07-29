@@ -16,22 +16,31 @@ import (
 )
 
 func main() {
-	port := flag.Int("port", 8080, "port to listen on for incoming http requests")
+	httpPort := flag.Int("http", 8080, "port to listen on for incoming http requests")
+	grpcPort := flag.Int("grpc", 8082, "port to listen on for incoming grpc requests")
+
 	flag.Parse()
+
+	httpAddr := ":" + strconv.Itoa(*httpPort)
+	grpcAddr := ":" + strconv.Itoa(*grpcPort)
 
 	repo := measure.NewMeasuresRepo()
 	srv := server.NewServer(repo)
-
 	r := router.New(srv)
 
-	addr := ":" + strconv.Itoa(*port)
 	s := &http.Server{
-		Addr:    addr,
+		Addr:    httpAddr,
 		Handler: r,
 	}
+
+	log.Infof("Starting http server %v", time.Now())
+	if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Error(err)
+	}
+
 	go func() {
 
-		lis, err := net.Listen("tcp", "0.0.0.0:8082")
+		lis, err := net.Listen("tcp", grpcAddr)
 		if err != nil {
 			log.Errorf("failed to listen: %v", err)
 		}
@@ -42,10 +51,4 @@ func main() {
 		log.Infof("Starting gRPC server %v", time.Now())
 		gs.Serve(lis)
 	}()
-
-	log.Infof("Starting http server %v", time.Now())
-	if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Error(err)
-	}
-
 }
