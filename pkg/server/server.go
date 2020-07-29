@@ -13,7 +13,7 @@ type Server struct {
 	streams  []*FetcherService_ListenForChangesServer
 }
 
-//NewServer creates new measurement server
-func NewServer(measures measure.Measures) *Server {
+//NewFetcher creates new fetcher service
+func NewFetcher(measures measure.Measures) *Server {
 	return &Server{measures: measures, Add: make(chan measure.Measure), Rmv: make(chan int), Edt: make(chan measure.Measure)}
 }

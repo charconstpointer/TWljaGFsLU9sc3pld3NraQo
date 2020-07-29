@@ -25,7 +25,7 @@ func main() {
 	grpcAddr := ":" + strconv.Itoa(*grpcPort)
 
 	repo := measure.NewMeasuresRepo()
-	srv := server.NewServer(repo)
+	srv := server.NewFetcher(repo)
 	r := router.New(srv)
 
 	s := &http.Server{
