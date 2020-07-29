@@ -8,7 +8,7 @@ import (
 //MeasuresRepo is an implementation of a Measures interface
 type MeasuresRepo struct {
 	m  []*Measure
-	mu sync.Mutex
+	mu sync.RWMutex
 }
 
 //NewMeasuresRepo is
@@ -16,7 +16,7 @@ func NewMeasuresRepo() *MeasuresRepo {
 	return &MeasuresRepo{}
 }
 
-//CreateMeasure persists new Measure
+//Save persists new Measure
 func (msr *MeasuresRepo) Save(m *Measure) error {
 	msr.mu.Lock()
 	defer msr.mu.Unlock()
@@ -26,7 +26,7 @@ func (msr *MeasuresRepo) Save(m *Measure) error {
 	return nil
 }
 
-//DeleteMeasure deletes existing Measure
+//Delete deletes existing Measure
 func (msr *MeasuresRepo) Delete(ID int) error {
 	msr.mu.Lock()
 	defer msr.mu.Unlock()
@@ -40,7 +40,7 @@ func (msr *MeasuresRepo) Delete(ID int) error {
 	return nil
 }
 
-//GetMeasure is
+//Get is
 func (msr *MeasuresRepo) Get(ID int) (*Measure, error) {
 	i, m := msr.find(ID)
 	if i == -1 {
@@ -49,12 +49,12 @@ func (msr *MeasuresRepo) Get(ID int) (*Measure, error) {
 	return m, nil
 }
 
-//GetMeasures returns all active measures
+//GetAll returns all active measures
 func (msr *MeasuresRepo) GetAll() ([]*Measure, error) {
 	return msr.m, nil
 }
 
-//UpdateMeasure is
+//Update is
 func (msr *MeasuresRepo) Update(ID int, interval int) error {
 	for _, msr := range msr.m {
 		if msr.id == ID {
@@ -64,6 +64,8 @@ func (msr *MeasuresRepo) Update(ID int, interval int) error {
 	}
 	return fmt.Errorf("measure with id %d could not be found", ID)
 }
+
+//GetByUrl is
 func (msr *MeasuresRepo) GetByUrl(URL string) (*Measure, error) {
 	for _, m := range msr.m {
 		if m.url == URL {

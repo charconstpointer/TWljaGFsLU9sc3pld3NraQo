@@ -82,7 +82,7 @@ func (s *Fetcher) HandleDeleteMeasure(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		w.WriteHeader(http.StatusNoContent)
+		w.WriteHeader(http.StatusNotFound)
 	}
 }
 

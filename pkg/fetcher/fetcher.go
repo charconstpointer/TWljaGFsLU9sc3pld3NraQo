@@ -4,7 +4,7 @@ import (
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/measure"
 )
 
-//Server represents measures http server
+//Fetcher represents measures http server
 type Fetcher struct {
 	measures measure.Measures
 	Add      chan measure.Measure
@@ -15,5 +15,10 @@ type Fetcher struct {
 
 //NewFetcher creates new fetcher service
 func NewFetcher(measures measure.Measures) *Fetcher {
-	return &Fetcher{measures: measures, Add: make(chan measure.Measure), Rmv: make(chan int), Edt: make(chan measure.Measure)}
+	return &Fetcher{
+		measures: measures,
+		Add:      make(chan measure.Measure),
+		Rmv:      make(chan int),
+		Edt:      make(chan measure.Measure),
+	}
 }

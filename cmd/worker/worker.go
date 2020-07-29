@@ -15,6 +15,7 @@ import (
 
 var (
 	grpcPort = flag.Int("grpc", 8082, "server grpc port")
+	timeout  = flag.Int("timeout", 5000, "http client timeout in ms")
 
 	grpcServer *grpc.Server
 )
@@ -34,7 +35,7 @@ func main() {
 		defer conn.Close()
 		c := fetcher.NewFetcherServiceClient(conn)
 
-		w := worker.NewFetcherWorker(c)
+		w := worker.NewFetcherWorker(c, *timeout)
 		w.Start()
 	}()
 

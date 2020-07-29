@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher"
@@ -18,15 +19,23 @@ type worker interface {
 
 //FetcherWorker is a simpe job scheduler
 type FetcherWorker struct {
-	c     fetcher.FetcherServiceClient
-	jobs  []*Job
-	queue chan *fetcher.Measure
-	Done  chan struct{}
+	c       fetcher.FetcherServiceClient
+	jobs    []*Job
+	mu      sync.RWMutex
+	queue   chan *fetcher.Measure
+	timeout int
+	Done    chan struct{}
 }
 
 //NewFetcherWorker .
-func NewFetcherWorker(c fetcher.FetcherServiceClient) *FetcherWorker {
-	return &FetcherWorker{c, make([]*Job, 0), make(chan *fetcher.Measure), make(chan struct{}, 1)}
+func NewFetcherWorker(c fetcher.FetcherServiceClient, timeout int) *FetcherWorker {
+	return &FetcherWorker{
+		c:       c,
+		jobs:    make([]*Job, 0),
+		queue:   make(chan *fetcher.Measure),
+		Done:    make(chan struct{}, 1),
+		timeout: timeout,
+	}
 }
 
 //Start .
@@ -35,11 +44,10 @@ func (w *FetcherWorker) Start() {
 	defer cancel()
 
 	msr, _ := w.c.GetMeasures(ctx, &fetcher.GetMeasuresRequest{})
-	// if err != nil {
-	// 	return err
-	// }
+
 	go w.listen()
 	go w.manageJobs()
+
 	for _, m := range msr.Measures {
 		w.queue <- m
 	}
@@ -50,24 +58,33 @@ func (w *FetcherWorker) Start() {
 func (w *FetcherWorker) exec(ctx context.Context, j *Job) {
 	measure := j.M
 	log.Printf("Loaded measure : %v\n", measure)
+
 	t := time.NewTicker(time.Duration(measure.Interval) * time.Second)
+	w.mu.Lock()
 	w.jobs = append(w.jobs, j)
+	w.mu.Unlock()
+
 	for {
 		select {
 		case _ = <-t.C:
-			d, b, err := fetch(measure, w.c)
+			d, b, err := w.fetch(measure)
+
 			if err != nil {
 				log.Print(err)
 				continue
 			}
+
 			err = w.saveProbe(measure.ID, d, string(b))
+
 			if err != nil {
 				log.Print(err)
 				continue
 			}
+
 		case _ = <-ctx.Done():
 			return
 		case _ = <-j.Done:
+			w.removeJob(j.M.ID)
 			return
 		}
 	}
@@ -127,7 +144,7 @@ func (w *FetcherWorker) manageJobs() {
 	}
 }
 
-func fetch(m *fetcher.Measure, fc fetcher.FetcherServiceClient) (int64, []byte, error) {
+func (w *FetcherWorker) fetch(m *fetcher.Measure) (int64, []byte, error) {
 	log.Printf("Fetching : %s\n", m.URL)
 
 	var start time.Time
@@ -135,7 +152,7 @@ func fetch(m *fetcher.Measure, fc fetcher.FetcherServiceClient) (int64, []byte, 
 
 	req, err := http.NewRequest("GET", m.URL, nil)
 	c := http.Client{
-		Timeout: time.Duration(m.Interval) * time.Second,
+		Timeout: time.Duration(w.timeout) * time.Millisecond,
 	}
 
 	start = time.Now()
@@ -150,6 +167,18 @@ func fetch(m *fetcher.Measure, fc fetcher.FetcherServiceClient) (int64, []byte, 
 		return -1, nil, err
 	}
 	return duration, b, nil
+}
+
+func (w *FetcherWorker) removeJob(ID int32) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	for i, j := range w.jobs {
+		if j.M.ID == ID {
+			w.jobs = append(w.jobs[:i], w.jobs[i+1:]...)
+			return
+		}
+	}
 }
 
 func (w *FetcherWorker) saveProbe(probeID int32, duration int64, response string) error {
