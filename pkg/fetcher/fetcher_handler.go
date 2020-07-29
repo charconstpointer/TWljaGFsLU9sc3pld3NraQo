@@ -11,12 +11,6 @@ import (
 	"github.com/go-chi/chi"
 )
 
-//HandleHome is
-func (s *Fetcher) HandleHome(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("home"))
-}
-
 //HandleCreateMeasure is
 func (s *Fetcher) HandleCreateMeasure(w http.ResponseWriter, r *http.Request) {
 	var cm measure.CreateMeasure
@@ -31,8 +25,15 @@ func (s *Fetcher) HandleCreateMeasure(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	exists := s.measures.Exists(cm.URL)
+	if exists {
+		s.measures.Update(cm.AsEntity())
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	m := measure.NewMeasure(cm.URL, cm.Interval)
-	err = s.measures.CreateMeasure(m)
+	err = s.measures.Save(m)
 	go func() {
 		s.Add <- *m
 	}()
@@ -47,7 +48,7 @@ func (s *Fetcher) HandleCreateMeasure(w http.ResponseWriter, r *http.Request) {
 
 //HandleGetAllMeasures is
 func (s *Fetcher) HandleGetAllMeasures(w http.ResponseWriter, r *http.Request) {
-	m, err := s.measures.GetMeasures()
+	m, err := s.measures.GetAll()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("something went wrong ;;"))
@@ -71,7 +72,7 @@ func (s *Fetcher) HandleDeleteMeasure(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 	}
-	err = s.measures.DeleteMeasure(ID)
+	err = s.measures.Delete(ID)
 	select {
 	case s.Rmv <- ID:
 		log.Printf("notification sent  %d", ID)
@@ -91,7 +92,7 @@ func (s *Fetcher) HandleGetHistory(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 	}
 
-	m, err := s.measures.GetMeasure(ID)
+	m, err := s.measures.Get(ID)
 
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)

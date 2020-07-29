@@ -9,7 +9,7 @@ import (
 )
 
 func (s *Fetcher) GetMeasures(context.Context, *GetMeasuresRequest) (*GetMeasuresResponse, error) {
-	msrs, err := s.measures.GetMeasures()
+	msrs, err := s.measures.GetAll()
 	if err != nil {
 		return nil, err
 	}
@@ -27,7 +27,7 @@ func (s *Fetcher) GetMeasures(context.Context, *GetMeasuresRequest) (*GetMeasure
 }
 
 func (s *Fetcher) AddProbe(c context.Context, r *AddProbeRequest) (*AddProbeResponse, error) {
-	m, err := s.measures.GetMeasure(int(r.MeasureID))
+	m, err := s.measures.Get(int(r.MeasureID))
 	if err != nil {
 		return nil, err
 	}

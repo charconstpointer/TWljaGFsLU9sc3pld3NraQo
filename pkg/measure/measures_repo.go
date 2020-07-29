@@ -17,7 +17,7 @@ func NewMeasuresRepo() *MeasuresRepo {
 }
 
 //CreateMeasure persists new Measure
-func (msr *MeasuresRepo) CreateMeasure(m *Measure) error {
+func (msr *MeasuresRepo) Save(m *Measure) error {
 	msr.mu.Lock()
 	defer msr.mu.Unlock()
 
@@ -27,7 +27,7 @@ func (msr *MeasuresRepo) CreateMeasure(m *Measure) error {
 }
 
 //DeleteMeasure deletes existing Measure
-func (msr *MeasuresRepo) DeleteMeasure(ID int) error {
+func (msr *MeasuresRepo) Delete(ID int) error {
 	msr.mu.Lock()
 	defer msr.mu.Unlock()
 
@@ -41,7 +41,7 @@ func (msr *MeasuresRepo) DeleteMeasure(ID int) error {
 }
 
 //GetMeasure is
-func (msr *MeasuresRepo) GetMeasure(ID int) (*Measure, error) {
+func (msr *MeasuresRepo) Get(ID int) (*Measure, error) {
 	i, m := msr.find(ID)
 	if i == -1 {
 		return nil, fmt.Errorf("measure with id %d could not be found", ID)
@@ -50,13 +50,27 @@ func (msr *MeasuresRepo) GetMeasure(ID int) (*Measure, error) {
 }
 
 //GetMeasures returns all active measures
-func (msr *MeasuresRepo) GetMeasures() ([]*Measure, error) {
+func (msr *MeasuresRepo) GetAll() ([]*Measure, error) {
 	return msr.m, nil
 }
 
 //UpdateMeasure is
-func (msr *MeasuresRepo) UpdateMeasure(m *Measure) error {
-	return nil
+func (msr *MeasuresRepo) Update(m *Measure) error {
+	for _, msr := range msr.m {
+		if msr.url == m.url {
+			msr.interval = m.interval
+			return nil
+		}
+	}
+	return fmt.Errorf("measure %s could not be found", m.url)
+}
+func (msr *MeasuresRepo) Exists(URL string) bool {
+	for _, m := range msr.m {
+		if m.url == URL {
+			return true
+		}
+	}
+	return false
 }
 
 func (msr *MeasuresRepo) find(ID int) (int, *Measure) {
