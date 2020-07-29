@@ -74,8 +74,9 @@ func (w *FetcherWorker) exec(ctx context.Context, j *Job) {
 		case _ = <-t.C:
 			d, b, err := w.fetch(measure)
 
-			if err != nil {
+			if err == http.ErrHandlerTimeout {
 				log.Print(err)
+				err = w.saveProbe(measure.ID, d, err.Error())
 				continue
 			}
 
