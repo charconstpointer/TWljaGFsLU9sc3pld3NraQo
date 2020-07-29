@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher"
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/worker"
@@ -27,6 +29,7 @@ func main() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(interrupt)
+
 	g := errgroup.Group{}
 	g.Go(func() error {
 		log.Print("Starting new grcp conn \n")
@@ -38,9 +41,13 @@ func main() {
 		}
 
 		c := fetcher.NewFetcherServiceClient(conn)
-		w := worker.NewFetcherWorker(c, *timeout)
+		repo := worker.NewProbesRepo(c)
 
-		return w.Start()
+		w := worker.NewWorker(repo)
+
+		w.Start(context.Background())
+		time.Sleep(9999999 * time.Second)
+		return nil
 	})
 
 	select {

@@ -29,7 +29,7 @@ func (s *Fetcher) HandleCreateMeasure(w http.ResponseWriter, r *http.Request) {
 
 	if m != nil {
 		s.measures.Update(m.AsDto().ID, cm.Interval)
-		s.enqueue(m)
+
 		w.WriteHeader(http.StatusOK)
 		return
 	}
@@ -108,9 +108,7 @@ func (s *Fetcher) HandleGetHistory(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Fetcher) enqueue(m *measure.Measure) {
-	log.Print("enqueue")
 	s.measures.Save(m)
-	log.Print("saved")
 	go func() {
 		s.Add <- *m
 	}()
