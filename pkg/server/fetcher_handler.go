@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"regexp"
 	"strconv"
 
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/measure"
@@ -23,8 +24,15 @@ func (s *Server) HandleCreateMeasure(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&cm); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 	}
+
+	matched, err := regexp.MatchString("^http.*://", cm.URL)
+	if !matched {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	m := measure.NewMeasure(cm.URL, cm.Interval)
-	err := s.measures.CreateMeasure(m)
+	err = s.measures.CreateMeasure(m)
 	go func() {
 		s.Add <- *m
 	}()

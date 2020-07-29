@@ -2,7 +2,9 @@ package main
 
 import (
 	"log"
-	"time"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/client"
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/server"
@@ -17,10 +19,20 @@ func main() {
 	}
 	defer conn.Close()
 
+	sigs := make(chan os.Signal, 1)
+	go func() {
+		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+		select {
+		case s := <-sigs:
+			switch s {
+			case syscall.SIGINT, syscall.SIGTERM:
+				os.Exit(1)
+			}
+		}
+	}()
+
 	c := server.NewFetcherServiceClient(conn)
 
 	w := client.NewFetcherWorker(c)
-	w.Listen()
-
-	time.Sleep(99999999 * time.Second)
+	w.Start()
 }

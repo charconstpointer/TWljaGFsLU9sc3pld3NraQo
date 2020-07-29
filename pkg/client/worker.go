@@ -15,31 +15,35 @@ type worker interface {
 	Listen()
 }
 
+//FetcherWorker is a simpe job scheduler
 type FetcherWorker struct {
 	c     server.FetcherServiceClient
 	jobs  []*Job
 	queue chan *server.Measure
+	Done  chan struct{}
 }
 
+//NewFetcherWorker .
 func NewFetcherWorker(c server.FetcherServiceClient) *FetcherWorker {
-	return &FetcherWorker{c, make([]*Job, 0), make(chan *server.Measure)}
+	return &FetcherWorker{c, make([]*Job, 0), make(chan *server.Measure), make(chan struct{}, 1)}
 }
 
-func (w *FetcherWorker) Listen() error {
+//Start .
+func (w *FetcherWorker) Start() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	msr, err := w.c.GetMeasures(ctx, &server.GetMeasuresRequest{})
-	if err != nil {
-		return err
-	}
+	msr, _ := w.c.GetMeasures(ctx, &server.GetMeasuresRequest{})
+	// if err != nil {
+	// 	return err
+	// }
 	go w.listen()
 	go w.manageJobs()
 	for _, m := range msr.Measures {
 		w.queue <- m
 	}
 
-	return nil
+	<-w.Done
 }
 
 func (w *FetcherWorker) exec(ctx context.Context, j *Job) {

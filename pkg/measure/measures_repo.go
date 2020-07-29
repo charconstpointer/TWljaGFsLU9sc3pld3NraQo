@@ -20,6 +20,7 @@ func NewMeasuresRepo() *MeasuresRepo {
 func (msr *MeasuresRepo) CreateMeasure(m *Measure) error {
 	msr.mu.Lock()
 	defer msr.mu.Unlock()
+
 	msr.m = append(msr.m, m)
 
 	return nil
