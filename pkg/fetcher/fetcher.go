@@ -1,8 +1,6 @@
 package fetcher
 
-import (
-	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/measure"
-)
+import "github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/measure"
 
 //Fetcher represents measures http server
 type Fetcher struct {

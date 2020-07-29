@@ -89,6 +89,7 @@ func main() {
 
 	err := g.Wait()
 	if err != nil {
+		log.Error(err)
 		os.Exit(2)
 	}
 

@@ -9,7 +9,7 @@ require (
 	github.com/golang/protobuf v1.4.2
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/labstack/gommon v0.3.0
-	github.com/sqs/goreturns v0.0.0-20181028201513-538ac6014518 // indirect
+	github.com/sqs/goreturns v0.0.0-20181028201513-538ac6014518
 	github.com/stretchr/objx v0.3.0 // indirect
 	github.com/stretchr/testify v1.6.1
 	golang.org/x/net v0.0.0-20200707034311-ab3426394381 // indirect
