@@ -1,38 +1,49 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/client"
-	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/server"
-
+	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher"
+	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/worker"
 	"google.golang.org/grpc"
 )
 
-func main() {
-	conn, err := grpc.Dial("0.0.0.0:8082", grpc.WithInsecure(), grpc.WithBlock())
-	if err != nil {
-		log.Fatalf("did not connect: %v", err)
-	}
-	defer conn.Close()
+var (
+	grpcPort = flag.Int("grpc", 8082, "server grpc port")
 
-	sigs := make(chan os.Signal, 1)
+	grpcServer *grpc.Server
+)
+
+func main() {
+	flag.Parse()
+
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(interrupt)
+
 	go func() {
-		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
-		select {
-		case s := <-sigs:
-			switch s {
-			case syscall.SIGINT, syscall.SIGTERM:
-				os.Exit(1)
-			}
+		conn, err := grpc.Dial(fmt.Sprintf(":%d", *grpcPort), grpc.WithInsecure(), grpc.WithBlock())
+		if err != nil {
+			log.Fatalf("did not connect: %v", err)
 		}
+		defer conn.Close()
+		c := fetcher.NewFetcherServiceClient(conn)
+
+		w := worker.NewFetcherWorker(c)
+		w.Start()
 	}()
 
-	c := server.NewFetcherServiceClient(conn)
+	select {
+	case <-interrupt:
+		break
+	}
 
-	w := client.NewFetcherWorker(c)
-	w.Start()
+	if grpcServer != nil {
+		grpcServer.GracefulStop()
+	}
 }

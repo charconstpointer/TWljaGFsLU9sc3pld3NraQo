@@ -1,4 +1,4 @@
-package client
+package worker
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/server"
+	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher"
 )
 
 type worker interface {
@@ -17,15 +17,15 @@ type worker interface {
 
 //FetcherWorker is a simpe job scheduler
 type FetcherWorker struct {
-	c     server.FetcherServiceClient
+	c     fetcher.FetcherServiceClient
 	jobs  []*Job
-	queue chan *server.Measure
+	queue chan *fetcher.Measure
 	Done  chan struct{}
 }
 
 //NewFetcherWorker .
-func NewFetcherWorker(c server.FetcherServiceClient) *FetcherWorker {
-	return &FetcherWorker{c, make([]*Job, 0), make(chan *server.Measure), make(chan struct{}, 1)}
+func NewFetcherWorker(c fetcher.FetcherServiceClient) *FetcherWorker {
+	return &FetcherWorker{c, make([]*Job, 0), make(chan *fetcher.Measure), make(chan struct{}, 1)}
 }
 
 //Start .
@@ -33,7 +33,7 @@ func (w *FetcherWorker) Start() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	msr, _ := w.c.GetMeasures(ctx, &server.GetMeasuresRequest{})
+	msr, _ := w.c.GetMeasures(ctx, &fetcher.GetMeasuresRequest{})
 	// if err != nil {
 	// 	return err
 	// }
@@ -74,7 +74,7 @@ func (w *FetcherWorker) exec(ctx context.Context, j *Job) {
 }
 
 func (w *FetcherWorker) listen() {
-	s, err := w.c.ListenForChanges(context.Background(), &server.ListenForChangesRequest{})
+	s, err := w.c.ListenForChanges(context.Background(), &fetcher.ListenForChangesRequest{})
 	if err != nil {
 		log.Printf("%v", err)
 	}
@@ -90,18 +90,18 @@ func (w *FetcherWorker) listen() {
 		}
 
 		switch res.Change {
-		case server.Change_DELETED:
+		case fetcher.Change_DELETED:
 			for _, job := range w.jobs {
 				if job.M.ID == res.MeasureID {
 					job.Cancel()
 				}
 			}
 
-		case server.Change_CREATED:
+		case fetcher.Change_CREATED:
 			log.Printf("enqueuing new measure %v to be executed", res.Measure)
 			w.queue <- res.Measure
 
-		case server.Change_EDITED:
+		case fetcher.Change_EDITED:
 			for _, job := range w.jobs {
 				if job.M.ID == res.MeasureID {
 					log.Printf("cancelling measure job %v", res.Measure)
@@ -124,7 +124,7 @@ func (w *FetcherWorker) manageJobs() {
 	}
 }
 
-func fetch(m *server.Measure, fc server.FetcherServiceClient) (int64, []byte, error) {
+func fetch(m *fetcher.Measure, fc fetcher.FetcherServiceClient) (int64, []byte, error) {
 	log.Printf("Fetching : %s\n", m.URL)
 
 	var start time.Time
@@ -154,7 +154,7 @@ func (w *FetcherWorker) saveProbe(probeID int32, duration int64, response string
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	_, err := w.c.AddProbe(ctx, &server.AddProbeRequest{
+	_, err := w.c.AddProbe(ctx, &fetcher.AddProbeRequest{
 		MeasureID: probeID,
 		CreatedAt: time.Now().Unix(),
 		Duration:  float32(float64(duration) / float64(time.Millisecond)),
