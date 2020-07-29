@@ -19,30 +19,19 @@ func (s *Fetcher) HandleCreateMeasure(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 	}
 
-	matched, err := regexp.MatchString("^http.*://", cm.URL)
+	matched, _ := regexp.MatchString("^http.*://", cm.URL)
 	if !matched {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	m, err := s.measures.GetByUrl(cm.URL)
+	m, _ := s.measures.GetByUrl(cm.URL)
+
 	if m != nil {
 		s.measures.Update(m.AsDto().ID, cm.Interval)
-		go func() {
-			s.Edt <- *m
-		}()
+		s.enqueue(m)
 		w.WriteHeader(http.StatusOK)
 		return
-	}
-
-	m = measure.NewMeasure(cm.URL, cm.Interval)
-	err = s.measures.Save(m)
-	go func() {
-		s.Add <- *m
-	}()
-
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -54,6 +43,11 @@ func (s *Fetcher) HandleGetAllMeasures(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
+
+	if len(m) == 0 {
+		w.WriteHeader(http.StatusNotFound)
+	}
+
 	var dtos []measure.Dto
 
 	for _, msr := range m {
@@ -110,4 +104,11 @@ func (s *Fetcher) HandleGetHistory(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("could not encode probes"))
 	}
 	w.WriteHeader(http.StatusOK)
+}
+
+func (s *Fetcher) enqueue(m *measure.Measure) {
+	s.measures.Save(m)
+	go func() {
+		s.Add <- *m
+	}()
 }
