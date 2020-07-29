@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -12,7 +13,7 @@ import (
 )
 
 type worker interface {
-	Listen()
+	Start()
 }
 
 //FetcherWorker is a simpe job scheduler
@@ -67,7 +68,6 @@ func (w *FetcherWorker) exec(ctx context.Context, j *Job) {
 		case _ = <-ctx.Done():
 			return
 		case _ = <-j.Done:
-			log.Printf("terminating measure job %v", j.M)
 			return
 		}
 	}
@@ -89,6 +89,7 @@ func (w *FetcherWorker) listen() {
 			return
 		}
 
+		fmt.Println(res.Change)
 		switch res.Change {
 		case fetcher.Change_DELETED:
 			for _, job := range w.jobs {
@@ -102,11 +103,13 @@ func (w *FetcherWorker) listen() {
 			w.queue <- res.Measure
 
 		case fetcher.Change_EDITED:
+			fmt.Println("EDITED")
 			for _, job := range w.jobs {
 				if job.M.ID == res.MeasureID {
-					log.Printf("cancelling measure job %v", res.Measure)
+					log.Printf("cancelling measure job %v", job.M.ID)
 					job.Cancel()
 					job = NewJob(res.Measure)
+					w.queue <- job.M
 				}
 			}
 

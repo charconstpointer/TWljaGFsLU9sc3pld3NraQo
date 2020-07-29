@@ -1,6 +1,8 @@
 package worker
 
 import (
+	"fmt"
+
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher"
 )
 
@@ -18,4 +20,5 @@ func NewJob(m *fetcher.Measure) *Job {
 //Cancel signals a need to stop job's execution
 func (j *Job) Cancel() {
 	j.Done <- struct{}{}
+	fmt.Println("cancelled")
 }

@@ -68,7 +68,7 @@ func (s *Fetcher) propagate(m measure.Measure, c Change) {
 	dto := m.AsDto()
 	for _, s := range s.streams {
 		err := (*s).Send(&ListenForChangesResponse{
-			Change:    Change_CREATED,
+			Change:    c,
 			MeasureID: int32(dto.ID),
 			Measure: &Measure{
 				ID:       int32(dto.ID),
@@ -76,7 +76,7 @@ func (s *Fetcher) propagate(m measure.Measure, c Change) {
 				URL:      dto.URL,
 			}})
 		if err != nil {
-			log.Println(err)
+			// log.Println(err)
 			continue
 		}
 	}

@@ -55,22 +55,22 @@ func (msr *MeasuresRepo) GetAll() ([]*Measure, error) {
 }
 
 //UpdateMeasure is
-func (msr *MeasuresRepo) Update(m *Measure) error {
+func (msr *MeasuresRepo) Update(ID int, interval int) error {
 	for _, msr := range msr.m {
-		if msr.url == m.url {
-			msr.interval = m.interval
+		if msr.id == ID {
+			msr.interval = interval
 			return nil
 		}
 	}
-	return fmt.Errorf("measure %s could not be found", m.url)
+	return fmt.Errorf("measure with id %d could not be found", ID)
 }
-func (msr *MeasuresRepo) Exists(URL string) bool {
+func (msr *MeasuresRepo) GetByUrl(URL string) (*Measure, error) {
 	for _, m := range msr.m {
 		if m.url == URL {
-			return true
+			return m, nil
 		}
 	}
-	return false
+	return nil, fmt.Errorf("measure for url %s could not be found", URL)
 }
 
 func (msr *MeasuresRepo) find(ID int) (int, *Measure) {

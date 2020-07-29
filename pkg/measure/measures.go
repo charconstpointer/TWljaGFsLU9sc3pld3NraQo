@@ -4,8 +4,8 @@ package measure
 type Measures interface {
 	Save(m *Measure) error
 	Get(ID int) (*Measure, error)
-	Exists(URL string) bool
+	GetByUrl(URL string) (*Measure, error)
 	GetAll() ([]*Measure, error)
-	Update(m *Measure) error
+	Update(ID int, interval int) error
 	Delete(ID int) error
 }

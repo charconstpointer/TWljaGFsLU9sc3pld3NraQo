@@ -25,14 +25,17 @@ func (s *Fetcher) HandleCreateMeasure(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	exists := s.measures.Exists(cm.URL)
-	if exists {
-		s.measures.Update(cm.AsEntity())
+	m, err := s.measures.GetByUrl(cm.URL)
+	if m != nil {
+		s.measures.Update(m.AsDto().ID, cm.Interval)
+		go func() {
+			s.Edt <- *m
+		}()
 		w.WriteHeader(http.StatusOK)
 		return
 	}
 
-	m := measure.NewMeasure(cm.URL, cm.Interval)
+	m = measure.NewMeasure(cm.URL, cm.Interval)
 	err = s.measures.Save(m)
 	go func() {
 		s.Add <- *m
@@ -40,7 +43,6 @@ func (s *Fetcher) HandleCreateMeasure(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("something went wrong ;;"))
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -51,7 +53,6 @@ func (s *Fetcher) HandleGetAllMeasures(w http.ResponseWriter, r *http.Request) {
 	m, err := s.measures.GetAll()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("something went wrong ;;"))
 	}
 	var dtos []measure.Dto
 
