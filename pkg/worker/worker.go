@@ -40,19 +40,24 @@ func NewFetcherWorker(c fetcher.FetcherServiceClient, timeout int) *FetcherWorke
 
 //Start .
 func (w *FetcherWorker) Start() {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	msr, _ := w.c.GetMeasures(ctx, &fetcher.GetMeasuresRequest{})
 
 	go w.listen()
 	go w.manageJobs()
 
-	for _, m := range msr.Measures {
+	msr := w.fetchInitMsr()
+	for _, m := range msr {
 		w.queue <- m
 	}
 
 	<-w.Done
+}
+
+func (w *FetcherWorker) fetchInitMsr() []*fetcher.Measure {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	msr, _ := w.c.GetMeasures(ctx, &fetcher.GetMeasuresRequest{})
+	return msr.Measures
 }
 
 func (w *FetcherWorker) exec(ctx context.Context, j *Job) {
