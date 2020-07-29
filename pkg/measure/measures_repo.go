@@ -18,8 +18,8 @@ func NewMeasuresRepo() *MeasuresRepo {
 
 //Save persists new Measure
 func (msr *MeasuresRepo) Save(m *Measure) error {
-	msr.mu.Lock()
-	defer msr.mu.Unlock()
+	// msr.mu.Lock()
+	// defer msr.mu.Unlock()
 
 	msr.m = append(msr.m, m)
 
@@ -28,8 +28,8 @@ func (msr *MeasuresRepo) Save(m *Measure) error {
 
 //Delete deletes existing Measure
 func (msr *MeasuresRepo) Delete(ID int) error {
-	msr.mu.Lock()
-	defer msr.mu.Unlock()
+	// msr.mu.Lock()
+	// defer msr.mu.Unlock()
 
 	i, _ := msr.find(ID)
 	if i == -1 {

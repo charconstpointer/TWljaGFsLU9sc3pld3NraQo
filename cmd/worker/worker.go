@@ -3,13 +3,14 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher"
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/worker"
+	"github.com/labstack/gommon/log"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 )
 
@@ -26,25 +27,36 @@ func main() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(interrupt)
-
-	go func() {
+	g := errgroup.Group{}
+	g.Go(func() error {
+		log.Print("Starting new grcp conn \n")
 		conn, err := grpc.Dial(fmt.Sprintf(":%d", *grpcPort), grpc.WithInsecure(), grpc.WithBlock())
-		if err != nil {
-			log.Fatalf("did not connect: %v", err)
-		}
 		defer conn.Close()
-		c := fetcher.NewFetcherServiceClient(conn)
 
+		if err != nil {
+			return err
+		}
+
+		c := fetcher.NewFetcherServiceClient(conn)
 		w := worker.NewFetcherWorker(c, *timeout)
-		w.Start()
-	}()
+
+		return w.Start()
+	})
 
 	select {
 	case <-interrupt:
+		os.Exit(2)
 		break
 	}
 
 	if grpcServer != nil {
 		grpcServer.GracefulStop()
 	}
+
+	err := g.Wait()
+	if err != nil {
+		log.Error(err)
+		os.Exit(2)
+	}
+
 }

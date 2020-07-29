@@ -33,7 +33,8 @@ func (s *Fetcher) HandleCreateMeasure(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
-
+	m = measure.NewMeasure(cm.URL, cm.Interval)
+	s.enqueue(m)
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -107,7 +108,9 @@ func (s *Fetcher) HandleGetHistory(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Fetcher) enqueue(m *measure.Measure) {
+	log.Print("enqueue")
 	s.measures.Save(m)
+	log.Print("saved")
 	go func() {
 		s.Add <- *m
 	}()

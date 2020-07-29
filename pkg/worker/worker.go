@@ -3,7 +3,6 @@ package worker
 import (
 	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher"
+	"golang.org/x/sync/errgroup"
 )
 
 type worker interface {
@@ -39,25 +39,48 @@ func NewFetcherWorker(c fetcher.FetcherServiceClient, timeout int) *FetcherWorke
 }
 
 //Start .
-func (w *FetcherWorker) Start() {
+func (w *FetcherWorker) Start() error {
+	g := errgroup.Group{}
+	g.Go(func() error {
+		return w.listen()
+	})
+	g.Go(func() error {
+		return w.manageJobs()
+	})
 
-	go w.listen()
-	go w.manageJobs()
-
-	msr := w.fetchInitMsr()
-	for _, m := range msr {
-		w.queue <- m
+	err := w.InitJobs()
+	if err != nil {
+		log.Print(err)
 	}
 
-	<-w.Done
+	err = g.Wait()
+	return err
+
 }
 
-func (w *FetcherWorker) fetchInitMsr() []*fetcher.Measure {
+func (w *FetcherWorker) InitJobs() error {
+	msr, err := w.fetchInitMsr()
+	log.Println(len(msr))
+	if err != nil {
+		return err
+	}
+	for _, m := range msr {
+		log.Print(m)
+		w.queue <- m
+	}
+	return nil
+}
+
+func (w *FetcherWorker) fetchInitMsr() ([]*fetcher.Measure, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	msr, _ := w.c.GetMeasures(ctx, &fetcher.GetMeasuresRequest{})
-	return msr.Measures
+	msr, err := w.c.GetMeasures(ctx, &fetcher.GetMeasuresRequest{})
+	log.Print(len(msr.Measures))
+	if err != nil {
+		return nil, err
+	}
+	return msr.Measures, nil
 }
 
 func (w *FetcherWorker) exec(ctx context.Context, j *Job) {
@@ -95,23 +118,17 @@ func (w *FetcherWorker) exec(ctx context.Context, j *Job) {
 	}
 }
 
-func (w *FetcherWorker) listen() {
+func (w *FetcherWorker) listen() error {
 	s, err := w.c.ListenForChanges(context.Background(), &fetcher.ListenForChangesRequest{})
 	if err != nil {
 		log.Printf("%v", err)
 	}
 	for {
 		res, err := s.Recv()
-		if err == io.EOF {
-			log.Print("no more responses")
-			return
-		}
 		if err != nil {
-			log.Print(err)
-			return
+			return err
 		}
 
-		fmt.Println(res.Change)
 		switch res.Change {
 		case fetcher.Change_DELETED:
 			for _, job := range w.jobs {
@@ -140,8 +157,9 @@ func (w *FetcherWorker) listen() {
 	}
 }
 
-func (w *FetcherWorker) manageJobs() {
+func (w *FetcherWorker) manageJobs() error {
 	for {
+
 		select {
 		case m := <-w.queue:
 			go w.exec(context.Background(), NewJob(m))
