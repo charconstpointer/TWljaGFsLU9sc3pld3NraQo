@@ -16,6 +16,8 @@ type worker interface {
 	AddJob(*job)
 	Start(context.Context)
 }
+
+//Worker .
 type Worker struct {
 	j      []*Job
 	jobs   chan (*Job)
@@ -24,6 +26,7 @@ type Worker struct {
 	probes Probes
 }
 
+//NewWorker .
 func NewWorker(probes Probes) *Worker {
 	return &Worker{
 		j:      make([]*Job, 0),
@@ -33,6 +36,7 @@ func NewWorker(probes Probes) *Worker {
 	}
 }
 
+//AddJob .
 func (w *Worker) AddJob(j *Job) {
 	w.rw.Lock()
 	defer w.rw.Unlock()
@@ -46,6 +50,7 @@ func (w *Worker) AddJob(j *Job) {
 
 }
 
+//Start .
 func (w *Worker) Start(ctx context.Context) error {
 	g := errgroup.Group{}
 	g.Go(func() error {

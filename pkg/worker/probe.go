@@ -8,12 +8,14 @@ import (
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher"
 )
 
+//Probe .
 type Probe struct {
 	id       int
 	url      string
 	interval int
 }
 
+//NewProbe .
 func NewProbe(id int, url string, interval int) *Probe {
 	return &Probe{
 		id:       id,
@@ -22,6 +24,7 @@ func NewProbe(id int, url string, interval int) *Probe {
 	}
 }
 
+//AsProbe .
 func AsProbe(ms []*fetcher.Measure) []*Probe {
 	probes := make([]*Probe, 0)
 	for _, m := range ms {
@@ -31,22 +34,26 @@ func AsProbe(ms []*fetcher.Measure) []*Probe {
 	return probes
 }
 
+//Probes .
 type Probes interface {
 	All(context.Context) ([]*Probe, error)
 	Add(context.Context, Result) error
 	Events(context.Context) chan (*fetcher.ListenForChangesResponse)
 }
 
+//ProbesRepo .
 type ProbesRepo struct {
 	c fetcher.FetcherServiceClient
 }
 
+//NewProbesRepo .
 func NewProbesRepo(c fetcher.FetcherServiceClient) *ProbesRepo {
 	return &ProbesRepo{
 		c: c,
 	}
 }
 
+//All .
 func (r *ProbesRepo) All(ctx context.Context) ([]*Probe, error) {
 	p, err := r.c.GetMeasures(ctx, &fetcher.GetMeasuresRequest{})
 
@@ -58,6 +65,7 @@ func (r *ProbesRepo) All(ctx context.Context) ([]*Probe, error) {
 	return ps, nil
 }
 
+//Add .
 func (r *ProbesRepo) Add(ctx context.Context, res Result) error {
 	_, err := r.c.AddProbe(ctx, &fetcher.AddProbeRequest{
 		MeasureID: int32(res.Probe),
@@ -71,6 +79,7 @@ func (r *ProbesRepo) Add(ctx context.Context, res Result) error {
 	return nil
 }
 
+//Events .
 func (r *ProbesRepo) Events(ctx context.Context) chan (*fetcher.ListenForChangesResponse) {
 	ec := make(chan *fetcher.ListenForChangesResponse)
 	s, err := r.c.ListenForChanges(ctx, &fetcher.ListenForChangesRequest{})

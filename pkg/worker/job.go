@@ -9,11 +9,14 @@ type job interface {
 	Cancel()
 }
 
+//Job .
 type Job struct {
 	D chan (struct{})
 	T *time.Ticker
 	p Probe
 }
+
+//Result .
 type Result struct {
 	Probe   int
 	URL     string
@@ -23,6 +26,7 @@ type Result struct {
 	Date    time.Time
 }
 
+//NewJob .
 func NewJob(p *Probe) *Job {
 	return &Job{
 		p: *p,
@@ -31,6 +35,7 @@ func NewJob(p *Probe) *Job {
 	}
 }
 
+//Cancel .
 func (j *Job) Cancel() {
 	select {
 	case j.D <- struct{}{}:
@@ -40,6 +45,7 @@ func (j *Job) Cancel() {
 	}
 }
 
+//Probe .
 func (j *Job) Probe() Probe {
 	return j.p
 }
