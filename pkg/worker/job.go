@@ -1,8 +1,9 @@
 package worker
 
 import (
-	"log"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 type job interface {
@@ -39,9 +40,9 @@ func NewJob(p *Probe) *Job {
 func (j *Job) Cancel() {
 	select {
 	case j.D <- struct{}{}:
-		log.Printf("cancelling job %v", &j)
+		log.Info().Msgf("cancelling job %v", &j)
 	default:
-		log.Printf("can not cancell job %v", &j)
+		log.Info().Msgf("can not cancell job %v", &j)
 	}
 }
 
