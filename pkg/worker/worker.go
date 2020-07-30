@@ -70,12 +70,12 @@ func (w *Worker) Start(ctx context.Context) error {
 						case _ = <-(*j).T.C:
 							res, err := w.execute(j)
 							if err != nil {
-								log.Print(err)
-								break
+								fmt.Print("timeout, breaking")
+								return
 							}
 							err = w.probes.Add(ctx, *res)
 							if err != nil {
-								log.Print(err)
+								fmt.Print("w.probes.Add")
 							}
 						case _ = <-(*j).D:
 							log.Print("stopping worker")
@@ -131,11 +131,13 @@ func (w *Worker) execute(j *Job) (*Result, error) {
 		Timeout: 5 * time.Second,
 	}
 	start := time.Now()
+	log.Printf("starting HTTP request %s", j.Probe().url)
 	r, err := client.Get(j.p.url)
 	stop := time.Since(start)
 	if err != nil {
 		return &Result{
-			Res:     err.Error(),
+			Probe:   j.p.id,
+			URL:     j.p.url,
 			Dur:     int(stop.Nanoseconds()),
 			Success: false,
 			Date:    time.Now(),
