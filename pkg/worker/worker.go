@@ -34,6 +34,13 @@ func NewWorker(probes Probes) *Worker {
 		jobs:   make(chan *Job),
 		R:      make(chan *Result),
 		probes: probes,
+		clients: sync.Pool{
+			New: func() interface{} {
+				return http.Client{
+					Timeout: 5 * time.Second,
+				}
+			},
+		},
 	}
 }
 
@@ -142,16 +149,14 @@ func (w *Worker) initJob(ctx context.Context, j *Job) {
 }
 
 func (w *Worker) exec(j *Job) (*Result, error) {
-
-	client := http.Client{
-		Timeout: 5 * time.Second,
-	}
+	client := w.clients.Get().(http.Client)
 
 	start := time.Now()
 	log.Info().Msgf("starting HTTP request %s", j.Probe().url)
 	r, err := client.Get(j.p.url)
 	stop := time.Since(start)
 
+	w.clients.Put(client)
 	if err != nil {
 		log.Warn().Msgf("server failed to respond for request %s ", j.Probe().url)
 		return &Result{
