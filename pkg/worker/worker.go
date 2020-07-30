@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 )
 
 type worker interface {
@@ -44,17 +46,20 @@ func (w *Worker) AddJob(j *Job) {
 
 }
 
-func (w *Worker) Start(ctx context.Context) {
-	go func() {
+func (w *Worker) Start(ctx context.Context) error {
+	g := errgroup.Group{}
+	g.Go(func() error {
 		for {
 			select {
 			case r := <-w.R:
 				fmt.Println("persisting")
 				w.probes.Add(ctx, *r)
+			case _ = <-ctx.Done():
+				return ctx.Err()
 			}
 		}
-	}()
-	go func() {
+	})
+	g.Go(func() error {
 		for {
 			select {
 			case j := <-w.jobs:
@@ -81,11 +86,12 @@ func (w *Worker) Start(ctx context.Context) {
 						}
 					}
 				}()
+			case _ = <-ctx.Done():
+				return ctx.Err()
 			}
 		}
-	}()
-
-	go func() {
+	})
+	g.Go(func() error {
 		e := w.probes.Events(ctx)
 		for {
 			select {
@@ -95,22 +101,29 @@ func (w *Worker) Start(ctx context.Context) {
 				w.jobs <- job
 				log.Printf("enqueueing new job, %v", job)
 			case _ = <-ctx.Done():
-				return
+				fmt.Println("e := w.probes.Events(ctx)")
+				return ctx.Err()
 			}
 		}
-	}()
-	go func() {
+
+	})
+	g.Go(func() error {
 		p, err := w.probes.All(ctx)
 
 		if err != nil {
 			log.Println("cannot do inital fetch for already existing probes")
-			return
+			return err
 		}
 		for _, probe := range p {
 			job := NewJob(probe)
 			w.jobs <- job
 		}
-	}()
+		fmt.Println("leaving  p, err := w.probes.All(ctx)")
+		return nil
+	})
+	err := g.Wait()
+	log.Print("err := g.Wait()")
+	return err
 }
 
 func (w *Worker) execute(j *Job) (*Result, error) {

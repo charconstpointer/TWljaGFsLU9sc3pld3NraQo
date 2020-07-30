@@ -41,6 +41,7 @@ func main() {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
 	g, ctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
@@ -84,7 +85,7 @@ func main() {
 		_ = httpServer.Shutdown(shutdownCtx)
 	}
 	if grpcServer != nil {
-		grpcServer.GracefulStop()
+		grpcServer.Stop()
 	}
 
 	err := g.Wait()
