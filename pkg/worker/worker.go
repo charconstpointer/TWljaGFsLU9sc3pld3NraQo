@@ -19,11 +19,12 @@ type worker interface {
 
 //Worker .
 type Worker struct {
-	j      []*Job
-	jobs   chan (*Job)
-	R      chan (*Result)
-	rw     sync.RWMutex
-	probes Probes
+	j       []*Job
+	jobs    chan (*Job)
+	R       chan (*Result)
+	rw      sync.RWMutex
+	probes  Probes
+	clients sync.Pool
 }
 
 //NewWorker .
@@ -52,7 +53,9 @@ func (w *Worker) AddJob(j *Job) {
 
 //Start .
 func (w *Worker) Start(ctx context.Context) error {
+
 	g := errgroup.Group{}
+
 	g.Go(func() error {
 		for {
 			select {
@@ -63,37 +66,18 @@ func (w *Worker) Start(ctx context.Context) error {
 			}
 		}
 	})
+
 	g.Go(func() error {
 		for {
 			select {
 			case j := <-w.jobs:
-				go func() {
-					log.Info().Msgf("starting new job %d", j.p.id)
-					for {
-						select {
-						case _ = <-(*j).T.C:
-							res, err := w.execute(j)
-							if err != nil {
-								return
-							}
-							err = w.probes.Add(ctx, *res)
-							if err != nil {
-								return
-							}
-						case _ = <-(*j).D:
-							log.Info().Msg("stopping worker")
-							return
-						case _ = <-ctx.Done():
-							log.Info().Msg("stopping worker")
-							return
-						}
-					}
-				}()
+				go w.initJob(ctx, j)
 			case _ = <-ctx.Done():
 				return ctx.Err()
 			}
 		}
 	})
+
 	g.Go(func() error {
 		e := w.probes.Events(ctx)
 		for {
@@ -109,6 +93,7 @@ func (w *Worker) Start(ctx context.Context) error {
 		}
 
 	})
+
 	g.Go(func() error {
 		p, err := w.probes.All(ctx)
 
@@ -122,19 +107,51 @@ func (w *Worker) Start(ctx context.Context) error {
 		}
 		return nil
 	})
+
 	err := g.Wait()
+
 	log.Info().Msg("err := g.Wait()")
+
 	return err
 }
 
-func (w *Worker) execute(j *Job) (*Result, error) {
+func (w *Worker) initJob(ctx context.Context, j *Job) {
+
+	log.Info().Msgf("starting new job %d", j.p.id)
+
+	for {
+		select {
+		case _ = <-(*j).T.C:
+			res, err := w.exec(j)
+			if err != nil {
+				return
+			}
+			err = w.probes.Add(ctx, *res)
+			if err != nil {
+				return
+			}
+		case _ = <-(*j).D:
+			log.Info().Msg("stopping worker")
+			return
+		case _ = <-ctx.Done():
+			log.Info().Msg("stopping worker")
+			return
+		}
+	}
+
+}
+
+func (w *Worker) exec(j *Job) (*Result, error) {
+
 	client := http.Client{
 		Timeout: 5 * time.Second,
 	}
+
 	start := time.Now()
 	log.Info().Msgf("starting HTTP request %s", j.Probe().url)
 	r, err := client.Get(j.p.url)
 	stop := time.Since(start)
+
 	if err != nil {
 		log.Warn().Msgf("server failed to respond for request %s ", j.Probe().url)
 		return &Result{
@@ -147,6 +164,7 @@ func (w *Worker) execute(j *Job) (*Result, error) {
 	}
 
 	res, err := w.parseResp(r)
+
 	if err != nil {
 		return &Result{
 			Probe:   j.p.id,
@@ -157,6 +175,7 @@ func (w *Worker) execute(j *Job) (*Result, error) {
 			Date:    time.Now(),
 		}, nil
 	}
+
 	return &Result{
 		Probe:   j.p.id,
 		URL:     j.p.url,

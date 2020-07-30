@@ -14,10 +14,10 @@ import (
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher"
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher/router"
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/measure"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
-
-	"github.com/labstack/gommon/log"
 )
 
 var (
@@ -35,6 +35,9 @@ func main() {
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(interrupt)
 
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+
 	repo := measure.NewMeasuresRepo()
 	srv := fetcher.NewFetcher(repo)
 
@@ -48,18 +51,18 @@ func main() {
 		grpcAddr := ":" + strconv.Itoa(*grpcPort)
 		lis, err := net.Listen("tcp", grpcAddr)
 		if err != nil {
-			log.Errorf("failed to listen: %v", err)
+			log.Error().Err(err)
 		}
 
 		grpcServer = grpc.NewServer()
 
 		fetcher.RegisterFetcherServiceServer(grpcServer, srv)
-		log.Infof("Starting gRPC server %v", time.Now())
+		log.Info().Msgf("Starting gRPC server %v", time.Now())
 		return grpcServer.Serve(lis)
 	})
 
 	g.Go(func() error {
-		log.Infof("Starting http server %v", time.Now())
+		log.Info().Msgf("Starting http server %v", time.Now())
 		httpAddr := ":" + strconv.Itoa(*httpPort)
 		r := router.New(srv)
 
@@ -90,7 +93,7 @@ func main() {
 
 	err := g.Wait()
 	if err != nil {
-		log.Error(err)
+		log.Error().Err(err)
 		os.Exit(2)
 	}
 

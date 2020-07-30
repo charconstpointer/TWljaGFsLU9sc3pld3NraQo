@@ -1,9 +1,5 @@
 package measure
 
-import (
-	"math/rand"
-)
-
 //Measure represents set of properties for a worker to fetch and work on
 type Measure struct {
 	id       int
@@ -15,7 +11,6 @@ type Measure struct {
 //NewMeasure is
 func NewMeasure(url string, interval int) *Measure {
 	return &Measure{
-		id:       rand.Intn(839201),
 		url:      url,
 		interval: interval,
 	}

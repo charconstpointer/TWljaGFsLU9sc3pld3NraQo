@@ -9,18 +9,22 @@ import (
 type MeasuresRepo struct {
 	m  []*Measure
 	mu sync.RWMutex
+	c  int
 }
 
 //NewMeasuresRepo is
 func NewMeasuresRepo() *MeasuresRepo {
-	return &MeasuresRepo{}
+	return &MeasuresRepo{
+		c: 0,
+	}
 }
 
 //Save persists new Measure
 func (msr *MeasuresRepo) Save(m *Measure) error {
-	// msr.mu.Lock()
-	// defer msr.mu.Unlock()
-
+	msr.mu.Lock()
+	defer msr.mu.Unlock()
+	m.id = msr.c
+	msr.c++
 	msr.m = append(msr.m, m)
 
 	return nil
@@ -28,8 +32,8 @@ func (msr *MeasuresRepo) Save(m *Measure) error {
 
 //Delete deletes existing Measure
 func (msr *MeasuresRepo) Delete(ID int) error {
-	// msr.mu.Lock()
-	// defer msr.mu.Unlock()
+	msr.mu.Lock()
+	defer msr.mu.Unlock()
 
 	i, _ := msr.find(ID)
 	if i == -1 {
