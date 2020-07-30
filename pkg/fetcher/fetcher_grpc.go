@@ -3,7 +3,6 @@ package fetcher
 import (
 	context "context"
 	"log"
-	"time"
 
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/measure"
 )
@@ -32,7 +31,7 @@ func (s *Fetcher) AddProbe(c context.Context, r *AddProbeRequest) (*AddProbeResp
 	if err != nil {
 		return nil, err
 	}
-	p := measure.NewProbe(r.Response, float64(r.Duration), float32(time.Unix(r.CreatedAt, 0).Unix())/float32(time.Millisecond))
+	p := measure.NewProbe(r.Response, r.Duration, r.CreatedAt)
 	m.AddProbe(p)
 	return &AddProbeResponse{}, nil
 }

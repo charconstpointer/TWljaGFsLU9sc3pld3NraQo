@@ -143,7 +143,7 @@ func (w *Worker) execute(j *Job) (*Result, error) {
 		return &Result{
 			Probe:   j.p.id,
 			URL:     j.p.url,
-			Dur:     int(stop.Nanoseconds()),
+			Dur:     stop.Seconds(),
 			Success: false,
 			Date:    time.Now(),
 		}, nil
@@ -155,7 +155,7 @@ func (w *Worker) execute(j *Job) (*Result, error) {
 			Probe:   j.p.id,
 			URL:     j.p.url,
 			Res:     res,
-			Dur:     int(stop.Nanoseconds()),
+			Dur:     stop.Seconds(),
 			Success: false,
 			Date:    time.Now(),
 		}, nil
@@ -164,7 +164,7 @@ func (w *Worker) execute(j *Job) (*Result, error) {
 		Probe:   j.p.id,
 		URL:     j.p.url,
 		Res:     res,
-		Dur:     int(stop.Nanoseconds()),
+		Dur:     stop.Seconds(),
 		Success: true,
 		Date:    time.Now(),
 	}, nil

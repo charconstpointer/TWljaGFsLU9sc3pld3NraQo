@@ -69,7 +69,7 @@ func (r *ProbesRepo) All(ctx context.Context) ([]*Probe, error) {
 func (r *ProbesRepo) Add(ctx context.Context, res Result) error {
 	_, err := r.c.AddProbe(ctx, &fetcher.AddProbeRequest{
 		MeasureID: int32(res.Probe),
-		CreatedAt: res.Date.Unix(),
+		CreatedAt: float32(res.Date.Unix()),
 		Duration:  float32(res.Dur),
 		Response:  res.Res,
 	})
