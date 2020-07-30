@@ -29,11 +29,12 @@ func (s *Fetcher) HandleCreateMeasure(w http.ResponseWriter, r *http.Request) {
 
 	if m != nil {
 		s.measures.Update(m.AsDto().ID, cm.Interval)
-		s.enqueue(m)
+
 		w.WriteHeader(http.StatusOK)
 		return
 	}
-
+	m = measure.NewMeasure(cm.URL, cm.Interval)
+	s.enqueue(m)
 	w.WriteHeader(http.StatusOK)
 }
 

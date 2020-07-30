@@ -22,6 +22,7 @@ func (s *Fetcher) GetMeasures(context.Context, *GetMeasuresRequest) (*GetMeasure
 			URL:      dto.URL,
 		})
 	}
+
 	return &GetMeasuresResponse{Measures: m}, nil
 
 }

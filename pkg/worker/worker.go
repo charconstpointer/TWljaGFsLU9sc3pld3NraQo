@@ -3,203 +3,170 @@ package worker
 import (
 	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"sync"
 	"time"
 
-	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher"
+	"golang.org/x/sync/errgroup"
 )
 
 type worker interface {
-	Start()
+	AddJob(*job)
+	Start(context.Context)
+}
+type Worker struct {
+	j      []*Job
+	jobs   chan (*Job)
+	R      chan (*Result)
+	rw     sync.RWMutex
+	probes Probes
 }
 
-//FetcherWorker is a simpe job scheduler
-type FetcherWorker struct {
-	c       fetcher.FetcherServiceClient
-	jobs    []*Job
-	mu      sync.RWMutex
-	queue   chan *fetcher.Measure
-	timeout int
-	Done    chan struct{}
-}
-
-//NewFetcherWorker .
-func NewFetcherWorker(c fetcher.FetcherServiceClient, timeout int) *FetcherWorker {
-	return &FetcherWorker{
-		c:       c,
-		jobs:    make([]*Job, 0),
-		queue:   make(chan *fetcher.Measure),
-		Done:    make(chan struct{}, 1),
-		timeout: timeout,
+func NewWorker(probes Probes) *Worker {
+	return &Worker{
+		j:      make([]*Job, 0),
+		jobs:   make(chan *Job),
+		R:      make(chan *Result),
+		probes: probes,
 	}
 }
 
-//Start .
-func (w *FetcherWorker) Start() {
+func (w *Worker) AddJob(j *Job) {
+	w.rw.Lock()
+	defer w.rw.Unlock()
 
-	go w.listen()
-	go w.manageJobs()
+	w.j = append(w.j, j)
 
-	msr := w.fetchInitMsr()
-	for _, m := range msr {
-		w.queue <- m
+	select {
+	case w.jobs <- j:
+	default:
 	}
 
-	<-w.Done
 }
 
-func (w *FetcherWorker) fetchInitMsr() []*fetcher.Measure {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	msr, _ := w.c.GetMeasures(ctx, &fetcher.GetMeasuresRequest{})
-	return msr.Measures
-}
-
-func (w *FetcherWorker) exec(ctx context.Context, j *Job) {
-	measure := j.M
-	log.Printf("Loaded measure : %v\n", measure)
-
-	t := time.NewTicker(time.Duration(measure.Interval) * time.Second)
-	w.mu.Lock()
-	w.jobs = append(w.jobs, j)
-	w.mu.Unlock()
-
-	for {
-		select {
-		case _ = <-t.C:
-			d, b, err := w.fetch(measure)
-
-			if err == http.ErrHandlerTimeout {
-				log.Print(err)
-				err = w.saveProbe(measure.ID, d, err.Error())
-				continue
+func (w *Worker) Start(ctx context.Context) error {
+	g := errgroup.Group{}
+	g.Go(func() error {
+		for {
+			select {
+			case r := <-w.R:
+				fmt.Println("persisting")
+				w.probes.Add(ctx, *r)
+			case _ = <-ctx.Done():
+				return ctx.Err()
 			}
-
-			err = w.saveProbe(measure.ID, d, string(b))
-
-			if err != nil {
-				log.Print(err)
-				continue
-			}
-
-		case _ = <-ctx.Done():
-			return
-		case _ = <-j.Done:
-			w.removeJob(j.M.ID)
-			return
 		}
-	}
-}
-
-func (w *FetcherWorker) listen() {
-	s, err := w.c.ListenForChanges(context.Background(), &fetcher.ListenForChangesRequest{})
-	if err != nil {
-		log.Printf("%v", err)
-	}
-	for {
-		res, err := s.Recv()
-		if err == io.EOF {
-			log.Print("no more responses")
-			return
-		}
-		if err != nil {
-			log.Print(err)
-			return
-		}
-
-		fmt.Println(res.Change)
-		switch res.Change {
-		case fetcher.Change_DELETED:
-			for _, job := range w.jobs {
-				if job.M.ID == res.MeasureID {
-					job.Cancel()
-				}
-			}
-
-		case fetcher.Change_CREATED:
-			log.Printf("enqueuing new measure %v to be executed", res.Measure)
-			w.queue <- res.Measure
-
-		case fetcher.Change_EDITED:
-			fmt.Println("EDITED")
-			for _, job := range w.jobs {
-				if job.M.ID == res.MeasureID {
-					log.Printf("cancelling measure job %v", job.M.ID)
-					job.Cancel()
-					job = NewJob(res.Measure)
-					w.queue <- job.M
-				}
-			}
-
-		}
-
-	}
-}
-
-func (w *FetcherWorker) manageJobs() {
-	for {
-		select {
-		case m := <-w.queue:
-			go w.exec(context.Background(), NewJob(m))
-		}
-	}
-}
-
-func (w *FetcherWorker) fetch(m *fetcher.Measure) (int64, []byte, error) {
-	log.Printf("Fetching : %s\n", m.URL)
-
-	var start time.Time
-	var duration int64
-
-	req, err := http.NewRequest("GET", m.URL, nil)
-	c := http.Client{
-		Timeout: time.Duration(w.timeout) * time.Millisecond,
-	}
-
-	start = time.Now()
-	res, err := c.Do(req)
-	duration = time.Since(start).Milliseconds()
-
-	if err != nil {
-		return -1, nil, err
-	}
-	b, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return -1, nil, err
-	}
-	return duration, b, nil
-}
-
-func (w *FetcherWorker) removeJob(ID int32) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-
-	for i, j := range w.jobs {
-		if j.M.ID == ID {
-			w.jobs = append(w.jobs[:i], w.jobs[i+1:]...)
-			return
-		}
-	}
-}
-
-func (w *FetcherWorker) saveProbe(probeID int32, duration int64, response string) error {
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	_, err := w.c.AddProbe(ctx, &fetcher.AddProbeRequest{
-		MeasureID: probeID,
-		CreatedAt: time.Now().Unix(),
-		Duration:  float32(float64(duration) / float64(time.Millisecond)),
-		Response:  response,
 	})
-	if err != nil {
-		return err
+	g.Go(func() error {
+		for {
+			select {
+			case j := <-w.jobs:
+				go func() {
+					log.Printf("starting new job %v", j)
+					for {
+						select {
+						case _ = <-(*j).T.C:
+							res, err := w.execute(j)
+							if err != nil {
+								log.Print(err)
+								break
+							}
+							err = w.probes.Add(ctx, *res)
+							if err != nil {
+								log.Print(err)
+							}
+						case _ = <-(*j).D:
+							log.Print("stopping worker")
+							return
+						case _ = <-ctx.Done():
+							log.Print("stopping worker")
+							return
+						}
+					}
+				}()
+			case _ = <-ctx.Done():
+				return ctx.Err()
+			}
+		}
+	})
+	g.Go(func() error {
+		e := w.probes.Events(ctx)
+		for {
+			select {
+			case ev := <-e:
+				p := NewProbe(int(ev.Measure.ID), ev.Measure.URL, int(ev.Measure.Interval))
+				job := NewJob(p)
+				w.jobs <- job
+				log.Printf("enqueueing new job, %v", job)
+			case _ = <-ctx.Done():
+				fmt.Println("e := w.probes.Events(ctx)")
+				return ctx.Err()
+			}
+		}
+
+	})
+	g.Go(func() error {
+		p, err := w.probes.All(ctx)
+
+		if err != nil {
+			log.Println("cannot do inital fetch for already existing probes")
+			return err
+		}
+		for _, probe := range p {
+			job := NewJob(probe)
+			w.jobs <- job
+		}
+		fmt.Println("leaving  p, err := w.probes.All(ctx)")
+		return nil
+	})
+	err := g.Wait()
+	log.Print("err := g.Wait()")
+	return err
+}
+
+func (w *Worker) execute(j *Job) (*Result, error) {
+	client := http.Client{
+		Timeout: 5 * time.Second,
 	}
-	return nil
+	start := time.Now()
+	r, err := client.Get(j.p.url)
+	stop := time.Since(start)
+	if err != nil {
+		return &Result{
+			Res:     err.Error(),
+			Dur:     int(stop.Nanoseconds()),
+			Success: false,
+			Date:    time.Now(),
+		}, nil
+	}
+
+	res, err := w.parseResp(r)
+	if err != nil {
+		return &Result{
+			Probe:   j.p.id,
+			URL:     j.p.url,
+			Res:     res,
+			Dur:     int(stop.Nanoseconds()),
+			Success: false,
+			Date:    time.Now(),
+		}, nil
+	}
+	return &Result{
+		Probe:   j.p.id,
+		URL:     j.p.url,
+		Res:     res,
+		Dur:     int(stop.Nanoseconds()),
+		Success: true,
+		Date:    time.Now(),
+	}, nil
+}
+
+func (w *Worker) parseResp(r *http.Response) (string, error) {
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
 }

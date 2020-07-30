@@ -49,11 +49,6 @@ func (c CreateMeasure) AsEntity() *Measure {
 
 //Probes returns probes for a given measure
 func (m *Measure) Probes() []*Probe {
-	// var probes []ProbeDto
-	// for _, p := range m.probes {
-	// 	probes = append(probes, p.AsDto())
-	// }
-	// return probes
 	return m.probes
 }
 
