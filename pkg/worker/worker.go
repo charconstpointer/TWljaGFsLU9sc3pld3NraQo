@@ -50,7 +50,7 @@ func (w *Worker) Start(ctx context.Context) {
 			select {
 			case r := <-w.R:
 				fmt.Println("persisting")
-				w.probes.Add(*r)
+				w.probes.Add(ctx, *r)
 			}
 		}
 	}()
@@ -68,15 +68,10 @@ func (w *Worker) Start(ctx context.Context) {
 								log.Print(err)
 								break
 							}
-							err = w.probes.Add(*res)
+							err = w.probes.Add(ctx, *res)
 							if err != nil {
 								log.Print(err)
 							}
-							// select {
-							// case w.R <- res:
-							// default:
-							// 	log.Println("can't persist job result")
-							// }
 						case _ = <-(*j).D:
 							log.Print("stopping worker")
 							return
@@ -91,8 +86,7 @@ func (w *Worker) Start(ctx context.Context) {
 	}()
 
 	go func() {
-		e := w.probes.Events()
-
+		e := w.probes.Events(ctx)
 		for {
 			select {
 			case ev := <-e:
@@ -100,11 +94,13 @@ func (w *Worker) Start(ctx context.Context) {
 				job := NewJob(p)
 				w.jobs <- job
 				log.Printf("enqueueing new job, %v", job)
+			case _ = <-ctx.Done():
+				return
 			}
 		}
 	}()
 	go func() {
-		p, err := w.probes.All()
+		p, err := w.probes.All(ctx)
 
 		if err != nil {
 			log.Println("cannot do inital fetch for already existing probes")

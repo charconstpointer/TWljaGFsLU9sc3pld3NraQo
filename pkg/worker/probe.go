@@ -32,9 +32,9 @@ func AsProbe(ms []*fetcher.Measure) []*Probe {
 }
 
 type Probes interface {
-	All() ([]*Probe, error)
-	Add(res Result) error
-	Events() chan (*fetcher.ListenForChangesResponse)
+	All(context.Context) ([]*Probe, error)
+	Add(context.Context, Result) error
+	Events(context.Context) chan (*fetcher.ListenForChangesResponse)
 }
 
 type ProbesRepo struct {
@@ -47,8 +47,8 @@ func NewProbesRepo(c fetcher.FetcherServiceClient) *ProbesRepo {
 	}
 }
 
-func (r *ProbesRepo) All() ([]*Probe, error) {
-	p, err := r.c.GetMeasures(context.Background(), &fetcher.GetMeasuresRequest{})
+func (r *ProbesRepo) All(ctx context.Context) ([]*Probe, error) {
+	p, err := r.c.GetMeasures(ctx, &fetcher.GetMeasuresRequest{})
 
 	if err != nil {
 		return nil, err
@@ -58,8 +58,8 @@ func (r *ProbesRepo) All() ([]*Probe, error) {
 	return ps, nil
 }
 
-func (r *ProbesRepo) Add(res Result) error {
-	_, err := r.c.AddProbe(context.Background(), &fetcher.AddProbeRequest{
+func (r *ProbesRepo) Add(ctx context.Context, res Result) error {
+	_, err := r.c.AddProbe(ctx, &fetcher.AddProbeRequest{
 		MeasureID: int32(res.Probe),
 		CreatedAt: res.Date.Unix(),
 		Duration:  float32(res.Dur),
@@ -71,9 +71,9 @@ func (r *ProbesRepo) Add(res Result) error {
 	return nil
 }
 
-func (r *ProbesRepo) Events() chan (*fetcher.ListenForChangesResponse) {
+func (r *ProbesRepo) Events(ctx context.Context) chan (*fetcher.ListenForChangesResponse) {
 	ec := make(chan *fetcher.ListenForChangesResponse)
-	s, err := r.c.ListenForChanges(context.Background(), &fetcher.ListenForChangesRequest{})
+	s, err := r.c.ListenForChanges(ctx, &fetcher.ListenForChangesRequest{})
 	if err != nil {
 		log.Printf("%v", err)
 	}

@@ -30,6 +30,9 @@ func main() {
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(interrupt)
 
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+
 	g := errgroup.Group{}
 	g.Go(func() error {
 		log.Print("Starting new grcp conn \n")
@@ -44,15 +47,15 @@ func main() {
 		repo := worker.NewProbesRepo(c)
 
 		w := worker.NewWorker(repo)
-
-		w.Start(context.Background())
+		w.Start(ctx)
 		time.Sleep(9999999 * time.Second)
 		return nil
 	})
 
 	select {
 	case <-interrupt:
-		os.Exit(2)
+		cancel()
+		// os.Exit(2)
 		break
 	}
 
