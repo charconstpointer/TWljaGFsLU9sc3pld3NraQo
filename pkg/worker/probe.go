@@ -53,7 +53,8 @@ func NewProbesRepo(c fetcher.FetcherServiceClient) *ProbesRepo {
 	}
 }
 
-//All .
+//All fetches all currenly created jobs, this should only by used on startup, after that,
+//you should be listening to incoming events and reacting to them
 func (r *ProbesRepo) All(ctx context.Context) ([]*Probe, error) {
 	p, err := r.c.GetMeasures(ctx, &fetcher.GetMeasuresRequest{})
 
@@ -65,7 +66,7 @@ func (r *ProbesRepo) All(ctx context.Context) ([]*Probe, error) {
 	return ps, nil
 }
 
-//Add .
+//Add persists job's result
 func (r *ProbesRepo) Add(ctx context.Context, res Result) error {
 	_, err := r.c.AddProbe(ctx, &fetcher.AddProbeRequest{
 		MeasureID: int32(res.Probe),
@@ -79,7 +80,9 @@ func (r *ProbesRepo) Add(ctx context.Context, res Result) error {
 	return nil
 }
 
-//Events .
+//Events returns a channel which will contain any event published by the job producer,
+//for example, new job created, job edited, job deleted, worker should react to those
+//events without a need to restart
 func (r *ProbesRepo) Events(ctx context.Context) chan (*fetcher.ListenForChangesResponse) {
 	ec := make(chan *fetcher.ListenForChangesResponse)
 	s, err := r.c.ListenForChanges(ctx, &fetcher.ListenForChangesRequest{})

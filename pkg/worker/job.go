@@ -9,14 +9,14 @@ type job interface {
 	Cancel()
 }
 
-//Job .
+//Job represents a task that should be executed on a set interval
 type Job struct {
 	D chan (struct{})
 	T *time.Ticker
 	p Probe
 }
 
-//Result .
+//Result is an outcome of a single job execution
 type Result struct {
 	Probe   int
 	URL     string
@@ -35,7 +35,7 @@ func NewJob(p *Probe) *Job {
 	}
 }
 
-//Cancel .
+//Cancel sends singal to terminate job exection
 func (j *Job) Cancel() {
 	select {
 	case j.D <- struct{}{}:

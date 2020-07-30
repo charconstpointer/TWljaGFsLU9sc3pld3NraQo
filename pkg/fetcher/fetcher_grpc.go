@@ -77,7 +77,6 @@ func (s *Fetcher) propagate(m measure.Measure, c Change) {
 				URL:      dto.URL,
 			}})
 		if err != nil {
-			// log.Println(err)
 			continue
 		}
 	}
