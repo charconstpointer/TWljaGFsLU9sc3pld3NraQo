@@ -186,5 +186,5 @@ var _FetcherService_serviceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "pkg/server/pb/fetcher.proto",
+	Metadata: "pkg/fetcher/pb/fetcher.proto",
 }

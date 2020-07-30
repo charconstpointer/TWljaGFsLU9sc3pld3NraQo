@@ -11,7 +11,9 @@ import (
 
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher"
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/worker"
-	"github.com/labstack/gommon/log"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 )
@@ -24,6 +26,9 @@ var (
 func main() {
 	flag.Parse()
 
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(interrupt)
@@ -33,19 +38,19 @@ func main() {
 
 	g := errgroup.Group{}
 	g.Go(func() error {
-		log.Print("starting gRPC connection with a server\n")
+		log.Info().Msg("starting gRPC connection with a server\n")
 		conn, err := grpc.Dial(fmt.Sprintf(":%d", *grpcPort), grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(2*time.Second))
 		defer conn.Close()
 
 		if err != nil {
 			return err
 		}
-		log.Print("connected")
+		log.Info().Msg("connected")
 		c := fetcher.NewFetcherServiceClient(conn)
 		repo := worker.NewProbesRepo(c)
 
 		w := worker.NewWorker(repo)
-		log.Print("starting worker")
+		log.Info().Msg("starting worker")
 		err = w.Start(ctx)
 		return err
 	})
@@ -53,13 +58,13 @@ func main() {
 	select {
 	case <-interrupt:
 		cancel()
-		// os.Exit(2)
+		os.Exit(2)
 		break
 	}
 
 	err := g.Wait()
 	if err != nil {
-		log.Error(err)
+		log.Error().Err(err)
 		os.Exit(2)
 	}
 

@@ -2,13 +2,13 @@ package worker
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
-	"log"
+
 	"net/http"
 	"sync"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -57,7 +57,6 @@ func (w *Worker) Start(ctx context.Context) error {
 		for {
 			select {
 			case r := <-w.R:
-				fmt.Println("persisting")
 				w.probes.Add(ctx, *r)
 			case _ = <-ctx.Done():
 				return ctx.Err()
@@ -69,24 +68,23 @@ func (w *Worker) Start(ctx context.Context) error {
 			select {
 			case j := <-w.jobs:
 				go func() {
-					log.Printf("starting new job %v", j)
+					log.Info().Msgf("starting new job %d", j.p.id)
 					for {
 						select {
 						case _ = <-(*j).T.C:
 							res, err := w.execute(j)
 							if err != nil {
-								fmt.Print("timeout, breaking")
 								return
 							}
 							err = w.probes.Add(ctx, *res)
 							if err != nil {
-								fmt.Print("w.probes.Add")
+								return
 							}
 						case _ = <-(*j).D:
-							log.Print("stopping worker")
+							log.Info().Msg("stopping worker")
 							return
 						case _ = <-ctx.Done():
-							log.Print("stopping worker")
+							log.Info().Msg("stopping worker")
 							return
 						}
 					}
@@ -104,9 +102,8 @@ func (w *Worker) Start(ctx context.Context) error {
 				p := NewProbe(int(ev.Measure.ID), ev.Measure.URL, int(ev.Measure.Interval))
 				job := NewJob(p)
 				w.jobs <- job
-				log.Printf("enqueueing new job, %v", job)
+				log.Info().Msgf("enqueueing new job, %d", job.p.id)
 			case _ = <-ctx.Done():
-				fmt.Println("e := w.probes.Events(ctx)")
 				return ctx.Err()
 			}
 		}
@@ -116,18 +113,17 @@ func (w *Worker) Start(ctx context.Context) error {
 		p, err := w.probes.All(ctx)
 
 		if err != nil {
-			log.Println("cannot do inital fetch for already existing probes")
+			log.Fatal().Msgf("cannot do inital fetch for already existing probes")
 			return err
 		}
 		for _, probe := range p {
 			job := NewJob(probe)
 			w.jobs <- job
 		}
-		fmt.Println("leaving  p, err := w.probes.All(ctx)")
 		return nil
 	})
 	err := g.Wait()
-	log.Print("err := g.Wait()")
+	log.Info().Msg("err := g.Wait()")
 	return err
 }
 
@@ -136,14 +132,15 @@ func (w *Worker) execute(j *Job) (*Result, error) {
 		Timeout: 5 * time.Second,
 	}
 	start := time.Now()
-	log.Printf("starting HTTP request %s", j.Probe().url)
+	log.Info().Msgf("starting HTTP request %s", j.Probe().url)
 	r, err := client.Get(j.p.url)
 	stop := time.Since(start)
 	if err != nil {
+		log.Warn().Msgf("server failed to respond for request %s ", j.Probe().url)
 		return &Result{
 			Probe:   j.p.id,
 			URL:     j.p.url,
-			Dur:     int(stop.Nanoseconds()),
+			Dur:     stop.Seconds(),
 			Success: false,
 			Date:    time.Now(),
 		}, nil
@@ -155,7 +152,7 @@ func (w *Worker) execute(j *Job) (*Result, error) {
 			Probe:   j.p.id,
 			URL:     j.p.url,
 			Res:     res,
-			Dur:     int(stop.Nanoseconds()),
+			Dur:     stop.Seconds(),
 			Success: false,
 			Date:    time.Now(),
 		}, nil
@@ -164,7 +161,7 @@ func (w *Worker) execute(j *Job) (*Result, error) {
 		Probe:   j.p.id,
 		URL:     j.p.url,
 		Res:     res,
-		Dur:     int(stop.Nanoseconds()),
+		Dur:     stop.Seconds(),
 		Success: true,
 		Date:    time.Now(),
 	}, nil

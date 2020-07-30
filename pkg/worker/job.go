@@ -22,7 +22,7 @@ type Result struct {
 	URL     string
 	Success bool
 	Res     string
-	Dur     int
+	Dur     float64
 	Date    time.Time
 }
 
