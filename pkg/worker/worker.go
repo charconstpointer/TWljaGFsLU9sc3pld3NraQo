@@ -117,8 +117,6 @@ func (w *Worker) Start(ctx context.Context) error {
 
 	err := g.Wait()
 
-	log.Info().Msg("err := g.Wait()")
-
 	return err
 }
 

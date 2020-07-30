@@ -19,8 +19,9 @@ import (
 )
 
 var (
-	grpcPort = flag.Int("grpc", 8082, "server grpc port")
-	timeout  = flag.Int("timeout", 5000, "http client timeout in ms")
+	grpcPort    = flag.Int("grpc", 8082, "server grpc port")
+	timeout     = flag.Int("timeout", 5000, "http client timeout in ms")
+	grpcTimeout = flag.Int("dial", 5000, "grpc dial timeout in ms")
 )
 
 func main() {
@@ -38,20 +39,29 @@ func main() {
 
 	g := errgroup.Group{}
 	g.Go(func() error {
-		log.Info().Msg("starting gRPC connection with a server\n")
-		conn, err := grpc.Dial(fmt.Sprintf(":%d", *grpcPort), grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(2*time.Second))
+		log.Info().Msg("starting gRPC connection with a server")
+
+		conn, err := grpc.Dial(
+			fmt.Sprintf(":%d", *grpcPort),
+			grpc.WithInsecure(), grpc.WithBlock(),
+			grpc.WithTimeout(time.Duration(*grpcTimeout)*time.Millisecond),
+		)
 		defer conn.Close()
 
 		if err != nil {
+			log.Fatal().Msg("can't connect to fetcher server")
 			return err
 		}
-		log.Info().Msg("connected")
+
+		log.Info().Msg("connected to fetcher server")
+
 		c := fetcher.NewFetcherServiceClient(conn)
 		repo := worker.NewProbesRepo(c)
-
 		w := worker.NewWorker(repo)
+
 		log.Info().Msg("starting worker")
 		err = w.Start(ctx)
+
 		return err
 	})
 
