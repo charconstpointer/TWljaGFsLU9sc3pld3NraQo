@@ -2,9 +2,9 @@ package fetcher
 
 import (
 	context "context"
-	"log"
 
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/measure"
+	"github.com/rs/zerolog/log"
 )
 
 func (s *Fetcher) GetMeasures(context.Context, *GetMeasuresRequest) (*GetMeasuresResponse, error) {
@@ -27,12 +27,15 @@ func (s *Fetcher) GetMeasures(context.Context, *GetMeasuresRequest) (*GetMeasure
 }
 
 func (s *Fetcher) AddProbe(c context.Context, r *AddProbeRequest) (*AddProbeResponse, error) {
+	log.Info().Msgf("received new probe result for %d ", r.MeasureID)
 	m, err := s.measures.Get(int(r.MeasureID))
 	if err != nil {
+		log.Warn().Msgf("received err probe result for %d ", r.MeasureID)
 		return nil, err
 	}
 	p := measure.NewProbe(r.Response, r.Duration, r.CreatedAt)
 	m.AddProbe(p)
+	log.Info().Msgf("AddProbe for %d ", r.MeasureID)
 	return &AddProbeResponse{}, nil
 }
 
@@ -52,7 +55,7 @@ func (s *Fetcher) ListenForChanges(r *ListenForChangesRequest, stream FetcherSer
 					Measure:   nil,
 				})
 				if err != nil {
-					log.Println(err)
+					log.Fatal().Msg(err.Error())
 					continue
 				}
 			}

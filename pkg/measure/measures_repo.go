@@ -15,6 +15,7 @@ type MeasuresRepo struct {
 //NewMeasuresRepo is
 func NewMeasuresRepo() *MeasuresRepo {
 	return &MeasuresRepo{
+		m: make([]*Measure, 0),
 		c: 0,
 	}
 }
@@ -32,14 +33,14 @@ func (msr *MeasuresRepo) Save(m *Measure) error {
 
 //Delete deletes existing Measure
 func (msr *MeasuresRepo) Delete(ID int) error {
-	msr.mu.Lock()
-	defer msr.mu.Unlock()
 
 	i, _ := msr.find(ID)
 	if i == -1 {
 		return fmt.Errorf("measure with id %d could not be found", ID)
 	}
 
+	msr.mu.Lock()
+	defer msr.mu.Unlock()
 	msr.m = append(msr.m[:i], msr.m[i+1:]...)
 	return nil
 }
@@ -90,6 +91,9 @@ func (msr *MeasuresRepo) GetByUrl(URL string) (*Measure, error) {
 func (msr *MeasuresRepo) find(ID int) (int, *Measure) {
 	msr.mu.RLock()
 	defer msr.mu.RUnlock()
+	if len(msr.m) == 0 {
+		return -1, nil
+	}
 	for i, m := range msr.m {
 		if m.id == ID {
 			return i, m

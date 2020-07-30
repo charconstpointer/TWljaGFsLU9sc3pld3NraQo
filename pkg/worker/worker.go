@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 )
@@ -90,10 +91,27 @@ func (w *Worker) Start(ctx context.Context) error {
 		for {
 			select {
 			case ev := <-e:
-				p := NewProbe(int(ev.Measure.ID), ev.Measure.URL, int(ev.Measure.Interval))
-				job := NewJob(p)
-				w.jobs <- job
-				log.Info().Msgf("enqueueing new job, %d", job.p.id)
+				log.Warn().Msg(ev.Change.String())
+				switch ev.Change {
+				case fetcher.Change_CREATED:
+					log.Log().Str("Change", ev.String())
+					p := NewProbe(int(ev.Measure.ID), ev.Measure.URL, int(ev.Measure.Interval))
+					job := NewJob(p)
+					w.jobs <- job
+					log.Info().Msgf("enqueueing new job, %d", job.p.id)
+				case fetcher.Change_EDITED:
+					log.Log().Str("Change", ev.String())
+				case fetcher.Change_DELETED:
+					log.Log().Str("Change", ev.String())
+					for _, job := range w.j {
+						if job.Probe().id == int(ev.MeasureID) {
+							go func() {
+								job.D <- struct{}{}
+							}()
+						}
+					}
+				}
+
 			case _ = <-ctx.Done():
 				return ctx.Err()
 			}
@@ -131,8 +149,10 @@ func (w *Worker) initJob(ctx context.Context, j *Job) {
 			if err != nil {
 				return
 			}
+			log.Info().Msgf("persisting result %s", res.URL)
 			err = w.probes.Add(ctx, *res)
 			if err != nil {
+				log.Fatal().Msgf("could not persist %s", res.URL)
 				return
 			}
 		case _ = <-(*j).D:
@@ -153,8 +173,8 @@ func (w *Worker) exec(j *Job) (*Result, error) {
 	log.Info().Msgf("starting HTTP request %s", j.Probe().url)
 	r, err := client.Get(j.p.url)
 	stop := time.Since(start)
-
 	w.clients.Put(client)
+
 	if err != nil {
 		log.Warn().Msgf("server failed to respond for request %s ", j.Probe().url)
 		return &Result{
