@@ -2,10 +2,9 @@ package worker
 
 import (
 	"context"
-	"fmt"
-	"log"
 
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher"
+	"github.com/rs/zerolog/log"
 )
 
 //Probe .
@@ -30,7 +29,6 @@ func AsProbe(ms []*fetcher.Measure) []*Probe {
 	for _, m := range ms {
 		probes = append(probes, NewProbe(int(m.ID), m.URL, int(m.Interval)))
 	}
-	fmt.Println(probes)
 	return probes
 }
 
@@ -84,7 +82,7 @@ func (r *ProbesRepo) Events(ctx context.Context) chan (*fetcher.ListenForChanges
 	ec := make(chan *fetcher.ListenForChangesResponse)
 	s, err := r.c.ListenForChanges(ctx, &fetcher.ListenForChangesRequest{})
 	if err != nil {
-		log.Printf("%v", err)
+		log.Error().Err(err)
 	}
 	go func() {
 		for {
