@@ -13,28 +13,25 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-type worker interface {
-	AddJob(*job)
-	Start(context.Context)
-}
-
 //Worker .
 type Worker struct {
 	j       []*Job
-	jobs    chan (*Job)
-	R       chan (*Result)
+	jobs    chan *Job
+	R       chan *Result
 	rw      sync.RWMutex
 	probes  Probes
+	timeout int
 	clients sync.Pool
 }
 
 //NewWorker .
-func NewWorker(probes Probes) *Worker {
+func NewWorker(timeout int, probes Probes) *Worker {
 	return &Worker{
-		j:      make([]*Job, 0),
-		jobs:   make(chan *Job),
-		R:      make(chan *Result),
-		probes: probes,
+		j:       make([]*Job, 0),
+		jobs:    make(chan *Job),
+		R:       make(chan *Result),
+		probes:  probes,
+		timeout: timeout,
 		clients: sync.Pool{
 			New: func() interface{} {
 				return http.Client{
@@ -68,7 +65,10 @@ func (w *Worker) Start(ctx context.Context) error {
 		for {
 			select {
 			case r := <-w.R:
-				w.probes.Add(ctx, *r)
+				err := w.probes.Add(ctx, *r)
+				if err != nil {
+					log.Err(err)
+				}
 			case _ = <-ctx.Done():
 				return ctx.Err()
 			}
@@ -91,27 +91,7 @@ func (w *Worker) Start(ctx context.Context) error {
 		for {
 			select {
 			case ev := <-e:
-				log.Warn().Msg(ev.Change.String())
-				switch ev.Change {
-				case fetcher.Change_CREATED:
-					log.Log().Str("Change", ev.String())
-					p := NewProbe(int(ev.Measure.ID), ev.Measure.URL, int(ev.Measure.Interval))
-					job := NewJob(p)
-					w.jobs <- job
-					log.Info().Msgf("enqueueing new job, %d", job.p.id)
-				case fetcher.Change_EDITED:
-					log.Log().Str("Change", ev.String())
-				case fetcher.Change_DELETED:
-					log.Log().Str("Change", ev.String())
-					for _, job := range w.j {
-						if job.Probe().id == int(ev.MeasureID) {
-							go func() {
-								job.D <- struct{}{}
-							}()
-						}
-					}
-				}
-
+				w.handleEvent(ev)
 			case _ = <-ctx.Done():
 				return ctx.Err()
 			}
@@ -215,4 +195,74 @@ func (w *Worker) parseResp(r *http.Response) (string, error) {
 		return "", err
 	}
 	return string(b), nil
+}
+
+func (w *Worker) findJob(ID int) (int, *Job) {
+	for i, job := range w.j {
+		if job.Probe().id == ID {
+			return i, job
+		}
+	}
+	return -1, nil
+}
+
+func (w *Worker) handleEvent(ev *fetcher.ListenForChangesResponse) {
+	switch ev.Change {
+	case fetcher.Change_CREATED:
+		log.Info().Msgf("starting job %d", ev.MeasureID)
+		w.enqueue(ev)
+	case fetcher.Change_EDITED:
+		log.Info().Msgf("updating job %d", ev.MeasureID)
+		w.replace(ev)
+	case fetcher.Change_DELETED:
+		log.Info().Msgf("deleting job %d", ev.MeasureID)
+		w.delete(ev)
+	}
+}
+
+func (w *Worker) replace(ev *fetcher.ListenForChangesResponse) {
+	_, j := w.findJob(int(ev.MeasureID))
+	if j != nil {
+		go func() {
+			j.D <- struct{}{}
+			p := NewProbe(
+				int(ev.Measure.ID),
+				ev.Measure.URL,
+				int(ev.Measure.Interval),
+			)
+			job := NewJob(p)
+			w.j = append(w.j, job)
+			select {
+			case w.jobs <- job:
+			default:
+				log.Warn().Msgf("cannot start updated job %d", ev.MeasureID)
+			}
+		}()
+	}
+
+}
+
+func (w *Worker) delete(ev *fetcher.ListenForChangesResponse) {
+	i, j := w.findJob(int(ev.MeasureID))
+	if j != nil {
+		go func() {
+			j.D <- struct{}{}
+			w.j = append(w.j[:i], w.j[i+1:]...)
+		}()
+	}
+}
+
+func (w *Worker) enqueue(ev *fetcher.ListenForChangesResponse) {
+	p := NewProbe(
+		int(ev.Measure.ID),
+		ev.Measure.URL,
+		int(ev.Measure.Interval),
+	)
+	job := NewJob(p)
+	w.j = append(w.j, job)
+	select {
+	case w.jobs <- job:
+	default:
+		log.Warn().Msgf("cannot enqueue job %d", ev.MeasureID)
+	}
 }

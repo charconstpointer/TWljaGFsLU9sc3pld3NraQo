@@ -29,13 +29,19 @@ func (s *Fetcher) HandleCreateMeasure(w http.ResponseWriter, r *http.Request) {
 	m, _ := s.measures.GetByUrl(cm.URL)
 
 	if m != nil {
-		s.measures.Update(m.AsDto().ID, cm.Interval)
-
+		err := s.measures.Update(m.AsDto().ID, cm.Interval)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		w.WriteHeader(http.StatusOK)
 		return
 	}
 	m = measure.NewMeasure(cm.URL, cm.Interval)
-	s.enqueue(m)
+	err := s.enqueue(m)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -115,9 +121,13 @@ func (s *Fetcher) HandleGetHistory(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s *Fetcher) enqueue(m *measure.Measure) {
-	s.measures.Save(m)
+func (s *Fetcher) enqueue(m *measure.Measure) error {
+	err := s.measures.Save(m)
+	if err != nil {
+		return err
+	}
 	go func() {
 		s.Add <- *m
 	}()
+	return nil
 }

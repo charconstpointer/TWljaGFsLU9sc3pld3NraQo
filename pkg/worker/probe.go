@@ -36,12 +36,27 @@ func AsProbe(ms []*fetcher.Measure) []*Probe {
 type Probes interface {
 	All(context.Context) ([]*Probe, error)
 	Add(context.Context, Result) error
-	Events(context.Context) chan (*fetcher.ListenForChangesResponse)
+	Events(context.Context) chan *fetcher.ListenForChangesResponse
 }
 
 //ProbesRepo .
 type ProbesRepo struct {
 	c fetcher.FetcherServiceClient
+}
+
+type ProbesRepoMock struct {
+}
+
+func (p ProbesRepoMock) All(ctx context.Context) ([]*Probe, error) {
+	return nil, nil
+}
+
+func (p ProbesRepoMock) Add(ctx context.Context, result Result) error {
+	return nil
+}
+
+func (p ProbesRepoMock) Events(ctx context.Context) chan *fetcher.ListenForChangesResponse {
+	return make(chan *fetcher.ListenForChangesResponse)
 }
 
 //NewProbesRepo .

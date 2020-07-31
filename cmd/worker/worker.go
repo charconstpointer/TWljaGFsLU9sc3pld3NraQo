@@ -57,8 +57,7 @@ func main() {
 
 		c := fetcher.NewFetcherServiceClient(conn)
 		repo := worker.NewProbesRepo(c)
-		w := worker.NewWorker(repo)
-
+		w := worker.NewWorker(*timeout, repo)
 		log.Info().Msg("starting worker")
 		err = w.Start(ctx)
 
@@ -68,7 +67,6 @@ func main() {
 	select {
 	case <-interrupt:
 		cancel()
-		os.Exit(2)
 		break
 	}
 

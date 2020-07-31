@@ -1,9 +1,14 @@
 version: "3"
 services:
-  db:
-    image: mariadb
-    environment:
-      MYSQL_ROOT_PASSWORD: app_root_pass
+  redis:
+    image: "redis:5"
     ports:
-      - 3306:3306
-    restart: always
+      - 6379:6379
+  mongodb_container:
+    image: mongo:4
+    ports:
+      - 27017:27017
+    volumes:
+      - mongo:/data/db
+volumes:
+  mongo:
