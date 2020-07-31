@@ -257,6 +257,10 @@ func (w *Worker) delete(ev *fetcher.ListenForChangesResponse) {
 	if j != nil {
 		go func() {
 			j.D <- struct{}{}
+			if len(w.j) == 1 {
+				w.j = w.j[:i]
+				return
+			}
 			w.j = append(w.j[:i], w.j[i+1:]...)
 		}()
 	}

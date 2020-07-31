@@ -2,7 +2,6 @@ package fetcher
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -113,7 +112,6 @@ func (s *Fetcher) HandleGetHistory(w http.ResponseWriter, r *http.Request) {
 	for _, p := range m.Probes() {
 		dtos = append(dtos, p.AsDto())
 	}
-	fmt.Print(len(m.Probes()))
 
 	if err := json.NewEncoder(w).Encode(dtos); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
