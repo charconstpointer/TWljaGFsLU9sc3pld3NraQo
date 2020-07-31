@@ -28,20 +28,35 @@ func (s *Fetcher) HandleCreateMeasure(w http.ResponseWriter, r *http.Request) {
 	m, _ := s.measures.GetByUrl(cm.URL)
 
 	if m != nil {
-		err := s.measures.Update(m.AsDto().ID, cm.Interval)
+		id := m.AsDto().ID
+		err := s.measures.Update(id, cm.Interval)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		s.Edt <- *m
 		w.WriteHeader(http.StatusOK)
+		c := createdResponse{Id: id}
+		b, err := json.Marshal(c)
+		_, _ = w.Write(b)
 		return
 	}
+
 	m = measure.NewMeasure(cm.URL, cm.Interval)
-	err := s.enqueue(m)
+	err := s.measures.Save(m)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
+
+	err = s.enqueue(m)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+
+	c := createdResponse{Id: m.AsDto().ID}
+	b, err := json.Marshal(c)
+	_, _ = w.Write(b)
+
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -121,12 +136,16 @@ func (s *Fetcher) HandleGetHistory(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Fetcher) enqueue(m *measure.Measure) error {
-	err := s.measures.Save(m)
-	if err != nil {
-		return err
-	}
+	//err := s.measures.Save(m)
+	//if err != nil {
+	//	return err
+	//}
 	go func() {
 		s.Add <- *m
 	}()
 	return nil
+}
+
+type createdResponse struct {
+	Id int `json:"id"`
 }
