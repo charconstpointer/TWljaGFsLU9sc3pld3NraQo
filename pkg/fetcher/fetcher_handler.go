@@ -20,7 +20,7 @@ func (s *Fetcher) HandleCreateMeasure(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 	}
 
-	matched, _ := regexp.MatchString("^http.*://", cm.URL)
+	matched, _ := regexp.MatchString("^http|https.*://", cm.URL)
 	if !matched {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -34,6 +34,7 @@ func (s *Fetcher) HandleCreateMeasure(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+		s.Edt <- *m
 		w.WriteHeader(http.StatusOK)
 		return
 	}
@@ -46,7 +47,7 @@ func (s *Fetcher) HandleCreateMeasure(w http.ResponseWriter, r *http.Request) {
 }
 
 //HandleGetAllMeasures is
-func (s *Fetcher) HandleGetAllMeasures(w http.ResponseWriter, r *http.Request) {
+func (s *Fetcher) HandleGetAllMeasures(w http.ResponseWriter, _ *http.Request) {
 	m, err := s.measures.GetAll()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -64,7 +65,7 @@ func (s *Fetcher) HandleGetAllMeasures(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewEncoder(w).Encode(dtos); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("could not encode measures"))
+		_, _ = w.Write([]byte("could not encode measures"))
 	}
 	w.WriteHeader(http.StatusOK)
 }
@@ -116,7 +117,7 @@ func (s *Fetcher) HandleGetHistory(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewEncoder(w).Encode(dtos); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("could not encode probes"))
+		_, _ = w.Write([]byte("could not encode probes"))
 	}
 	w.WriteHeader(http.StatusOK)
 }

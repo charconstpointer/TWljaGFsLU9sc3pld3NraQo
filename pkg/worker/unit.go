@@ -7,16 +7,16 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-//Probe .
-type Probe struct {
+//Unit .
+type Unit struct {
 	id       int
 	url      string
 	interval int
 }
 
 //NewProbe .
-func NewProbe(id int, url string, interval int) *Probe {
-	return &Probe{
+func NewUnit(id int, url string, interval int) *Unit {
+	return &Unit{
 		id:       id,
 		url:      url,
 		interval: interval,
@@ -24,65 +24,65 @@ func NewProbe(id int, url string, interval int) *Probe {
 }
 
 //AsProbe .
-func AsProbe(ms []*fetcher.Measure) []*Probe {
-	probes := make([]*Probe, 0)
+func AsUnit(ms []*fetcher.Measure) []*Unit {
+	probes := make([]*Unit, 0)
 	for _, m := range ms {
-		probes = append(probes, NewProbe(int(m.ID), m.URL, int(m.Interval)))
+		probes = append(probes, NewUnit(int(m.ID), m.URL, int(m.Interval)))
 	}
 	return probes
 }
 
 //Probes .
-type Probes interface {
-	All(context.Context) ([]*Probe, error)
+type Units interface {
+	All(context.Context) ([]*Unit, error)
 	Add(context.Context, Result) error
 	Events(context.Context) chan *fetcher.ListenForChangesResponse
 }
 
 //ProbesRepo .
-type ProbesRepo struct {
+type UnitsRepo struct {
 	c fetcher.FetcherServiceClient
 }
 
-type ProbesRepoMock struct {
+type UnitsRepoMock struct {
 }
 
-func (p ProbesRepoMock) All(ctx context.Context) ([]*Probe, error) {
+func (p UnitsRepoMock) All(_ context.Context) ([]*Unit, error) {
 	return nil, nil
 }
 
-func (p ProbesRepoMock) Add(ctx context.Context, result Result) error {
+func (p UnitsRepoMock) Add(_ context.Context, _ Result) error {
 	return nil
 }
 
-func (p ProbesRepoMock) Events(ctx context.Context) chan *fetcher.ListenForChangesResponse {
+func (p UnitsRepoMock) Events(_ context.Context) chan *fetcher.ListenForChangesResponse {
 	return make(chan *fetcher.ListenForChangesResponse)
 }
 
 //NewProbesRepo .
-func NewProbesRepo(c fetcher.FetcherServiceClient) *ProbesRepo {
-	return &ProbesRepo{
+func NewProbesRepo(c fetcher.FetcherServiceClient) *UnitsRepo {
+	return &UnitsRepo{
 		c: c,
 	}
 }
 
 //All fetches all currenly created jobs, this should only by used on startup, after that,
 //you should be listening to incoming events and reacting to them
-func (r *ProbesRepo) All(ctx context.Context) ([]*Probe, error) {
+func (r *UnitsRepo) All(ctx context.Context) ([]*Unit, error) {
 	p, err := r.c.GetMeasures(ctx, &fetcher.GetMeasuresRequest{})
 
 	if err != nil {
 		return nil, err
 	}
-	ps := AsProbe(p.Measures)
+	ps := AsUnit(p.Measures)
 
 	return ps, nil
 }
 
 //Add persists job's result
-func (r *ProbesRepo) Add(ctx context.Context, res Result) error {
+func (r *UnitsRepo) Add(ctx context.Context, res Result) error {
 	_, err := r.c.AddProbe(ctx, &fetcher.AddProbeRequest{
-		MeasureID: int32(res.Probe),
+		MeasureID: int32(res.ID),
 		CreatedAt: float32(res.Date.Unix()),
 		Duration:  float32(res.Dur),
 		Response:  res.Res,
@@ -96,7 +96,7 @@ func (r *ProbesRepo) Add(ctx context.Context, res Result) error {
 //Events returns a channel which will contain any event published by the job producer,
 //for example, new job created, job edited, job deleted, worker should react to those
 //events without a need to restart
-func (r *ProbesRepo) Events(ctx context.Context) chan (*fetcher.ListenForChangesResponse) {
+func (r *UnitsRepo) Events(ctx context.Context) chan *fetcher.ListenForChangesResponse {
 	ec := make(chan *fetcher.ListenForChangesResponse)
 	s, err := r.c.ListenForChanges(ctx, &fetcher.ListenForChangesRequest{})
 	if err != nil {
@@ -110,7 +110,6 @@ func (r *ProbesRepo) Events(ctx context.Context) chan (*fetcher.ListenForChanges
 				return
 			}
 			ec <- res
-
 		}
 	}()
 	return ec

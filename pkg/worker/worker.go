@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"io/ioutil"
+	"strconv"
 
 	"net/http"
 	"sync"
@@ -19,18 +20,18 @@ type Worker struct {
 	jobs    chan *Job
 	R       chan *Result
 	rw      sync.RWMutex
-	probes  Probes
+	units   Units
 	timeout int
 	clients sync.Pool
 }
 
 //NewWorker .
-func NewWorker(timeout int, probes Probes) *Worker {
+func NewWorker(timeout int, units Units) *Worker {
 	return &Worker{
 		j:       make([]*Job, 0),
 		jobs:    make(chan *Job),
 		R:       make(chan *Result),
-		probes:  probes,
+		units:   units,
 		timeout: timeout,
 		clients: sync.Pool{
 			New: func() interface{} {
@@ -65,7 +66,7 @@ func (w *Worker) Start(ctx context.Context) error {
 		for {
 			select {
 			case r := <-w.R:
-				err := w.probes.Add(ctx, *r)
+				err := w.units.Add(ctx, *r)
 				if err != nil {
 					log.Err(err)
 				}
@@ -87,7 +88,7 @@ func (w *Worker) Start(ctx context.Context) error {
 	})
 
 	g.Go(func() error {
-		e := w.probes.Events(ctx)
+		e := w.units.Events(ctx)
 		for {
 			select {
 			case ev := <-e:
@@ -100,14 +101,14 @@ func (w *Worker) Start(ctx context.Context) error {
 	})
 
 	g.Go(func() error {
-		p, err := w.probes.All(ctx)
+		p, err := w.units.All(ctx)
 
 		if err != nil {
-			log.Fatal().Msgf("cannot do inital fetch for already existing probes")
+			log.Fatal().Msgf("cannot do inital fetch for already existing units")
 			return err
 		}
-		for _, probe := range p {
-			job := NewJob(probe)
+		for _, unit := range p {
+			job := NewJob(unit)
 			w.jobs <- job
 		}
 		return nil
@@ -120,8 +121,12 @@ func (w *Worker) Start(ctx context.Context) error {
 
 func (w *Worker) initJob(ctx context.Context, j *Job) {
 
-	log.Info().Msgf("starting new job %d", j.p.id)
-
+	//log.Info().Msgf("starting new job %d", j.u.id)
+	log.Info().
+		Str("ID", strconv.Itoa(j.u.id)).
+		Str("interval", strconv.Itoa(j.u.interval)).
+		Str("URL", j.u.url).
+		Msg("starting new job")
 	for {
 		select {
 		case _ = <-(*j).T.C:
@@ -129,8 +134,8 @@ func (w *Worker) initJob(ctx context.Context, j *Job) {
 			if err != nil {
 				return
 			}
-			log.Info().Msgf("persisting result %s", res.URL)
-			err = w.probes.Add(ctx, *res)
+			//log.Info().Msgf("persisting result %s", res.URL)
+			err = w.units.Add(ctx, *res)
 			if err != nil {
 				log.Fatal().Msgf("could not persist %s", res.URL)
 				return
@@ -147,19 +152,24 @@ func (w *Worker) initJob(ctx context.Context, j *Job) {
 }
 
 func (w *Worker) exec(j *Job) (*Result, error) {
+	log.Info().
+		Str("ID", strconv.Itoa(j.u.id)).
+		Str("interval", strconv.Itoa(j.u.interval)).
+		Str("URL", j.u.url).
+		Msg("starting new job")
+
 	client := w.clients.Get().(http.Client)
 
 	start := time.Now()
-	log.Info().Msgf("starting HTTP request %s", j.Probe().url)
-	r, err := client.Get(j.p.url)
+	r, err := client.Get(j.u.url)
 	stop := time.Since(start)
 	w.clients.Put(client)
 
 	if err != nil {
-		log.Warn().Msgf("server failed to respond for request %s ", j.Probe().url)
+		log.Warn().Msgf("server failed to respond for request %s ", j.Unit().url)
 		return &Result{
-			Probe:   j.p.id,
-			URL:     j.p.url,
+			ID:      j.u.id,
+			URL:     j.u.url,
 			Dur:     stop.Seconds(),
 			Success: false,
 			Date:    time.Now(),
@@ -170,8 +180,8 @@ func (w *Worker) exec(j *Job) (*Result, error) {
 
 	if err != nil {
 		return &Result{
-			Probe:   j.p.id,
-			URL:     j.p.url,
+			ID:      j.u.id,
+			URL:     j.u.url,
 			Res:     res,
 			Dur:     stop.Seconds(),
 			Success: false,
@@ -180,8 +190,8 @@ func (w *Worker) exec(j *Job) (*Result, error) {
 	}
 
 	return &Result{
-		Probe:   j.p.id,
-		URL:     j.p.url,
+		ID:      j.u.id,
+		URL:     j.u.url,
 		Res:     res,
 		Dur:     stop.Seconds(),
 		Success: true,
@@ -199,7 +209,7 @@ func (w *Worker) parseResp(r *http.Response) (string, error) {
 
 func (w *Worker) findJob(ID int) (int, *Job) {
 	for i, job := range w.j {
-		if job.Probe().id == ID {
+		if job.Unit().id == ID {
 			return i, job
 		}
 	}
@@ -225,7 +235,7 @@ func (w *Worker) replace(ev *fetcher.ListenForChangesResponse) {
 	if j != nil {
 		go func() {
 			j.D <- struct{}{}
-			p := NewProbe(
+			p := NewUnit(
 				int(ev.Measure.ID),
 				ev.Measure.URL,
 				int(ev.Measure.Interval),
@@ -253,7 +263,7 @@ func (w *Worker) delete(ev *fetcher.ListenForChangesResponse) {
 }
 
 func (w *Worker) enqueue(ev *fetcher.ListenForChangesResponse) {
-	p := NewProbe(
+	p := NewUnit(
 		int(ev.Measure.ID),
 		ev.Measure.URL,
 		int(ev.Measure.Interval),

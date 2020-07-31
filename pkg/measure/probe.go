@@ -12,7 +12,7 @@ func NewProbe(response string, duration float32, createdAt float32) *Probe {
 	return &Probe{
 		response:  response,
 		duration:  duration,
-		createdAt: float32(createdAt),
+		createdAt: createdAt,
 	}
 }
 

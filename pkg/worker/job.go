@@ -6,20 +6,16 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type job interface {
-	Cancel()
-}
-
 //Job represents a task that should be executed on a set interval
 type Job struct {
-	D chan (struct{})
+	D chan struct{}
 	T *time.Ticker
-	p Probe
+	u Unit
 }
 
 //Result is an outcome of a single job execution
 type Result struct {
-	Probe   int
+	ID      int
 	URL     string
 	Success bool
 	Res     string
@@ -28,11 +24,11 @@ type Result struct {
 }
 
 //NewJob .
-func NewJob(p *Probe) *Job {
+func NewJob(u *Unit) *Job {
 	return &Job{
-		p: *p,
+		u: *u,
 		D: make(chan struct{}, 1),
-		T: time.NewTicker(time.Duration(p.interval) * time.Second),
+		T: time.NewTicker(time.Duration(u.interval) * time.Second),
 	}
 }
 
@@ -46,7 +42,7 @@ func (j *Job) Cancel() {
 	}
 }
 
-//Probe .
-func (j *Job) Probe() Probe {
-	return j.p
+//Unit .
+func (j *Job) Unit() Unit {
+	return j.u
 }
