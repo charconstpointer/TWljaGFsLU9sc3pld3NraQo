@@ -38,12 +38,12 @@ func main() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
-	repo := measure.NewMeasuresRepo()
-	srv := fetcher.NewFetcher(repo)
-
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
+	repo := measure.NewMeasuresRepo()
+	srv := fetcher.NewFetcher(ctx, repo)
 
 	g, ctx := errgroup.WithContext(ctx)
 

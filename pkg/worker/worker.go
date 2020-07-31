@@ -156,7 +156,7 @@ func (w *Worker) exec(j *Job) (*Result, error) {
 		Str("ID", strconv.Itoa(j.u.id)).
 		Str("interval", strconv.Itoa(j.u.interval)).
 		Str("URL", j.u.url).
-		Msg("starting new job")
+		Msg("executing new job")
 
 	client := w.clients.Get().(http.Client)
 

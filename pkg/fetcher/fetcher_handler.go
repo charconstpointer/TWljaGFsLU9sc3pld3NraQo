@@ -136,10 +136,6 @@ func (s *Fetcher) HandleGetHistory(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Fetcher) enqueue(m *measure.Measure) error {
-	//err := s.measures.Save(m)
-	//if err != nil {
-	//	return err
-	//}
 	go func() {
 		s.Add <- *m
 	}()

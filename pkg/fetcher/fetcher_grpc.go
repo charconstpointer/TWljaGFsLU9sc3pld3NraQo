@@ -2,6 +2,7 @@ package fetcher
 
 import (
 	context "context"
+	"strconv"
 
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/measure"
 	"github.com/rs/zerolog/log"
@@ -27,7 +28,11 @@ func (s *Fetcher) GetMeasures(context.Context, *GetMeasuresRequest) (*GetMeasure
 }
 
 func (s *Fetcher) AddProbe(_ context.Context, r *AddProbeRequest) (*AddProbeResponse, error) {
-	log.Info().Msgf("received new probe result for %d ", r.MeasureID)
+	log.Info().
+		Str("measure", strconv.Itoa(int(r.MeasureID))).
+		Float32("duration", r.Duration).
+		Msg("received new probe result")
+
 	m, err := s.measures.Get(int(r.MeasureID))
 	if err != nil {
 		log.Warn().Msgf("received err probe result for %d ", r.MeasureID)
@@ -58,6 +63,10 @@ func (s *Fetcher) ListenForChanges(_ *ListenForChangesRequest, stream FetcherSer
 					continue
 				}
 			}
+		case _ = <-s.ctx.Done():
+			log.Info().Msg("closing grpc stream")
+			return s.ctx.Err()
+
 		}
 	}
 }
