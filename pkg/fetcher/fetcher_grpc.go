@@ -26,7 +26,7 @@ func (s *Fetcher) GetMeasures(context.Context, *GetMeasuresRequest) (*GetMeasure
 
 }
 
-func (s *Fetcher) AddProbe(c context.Context, r *AddProbeRequest) (*AddProbeResponse, error) {
+func (s *Fetcher) AddProbe(_ context.Context, r *AddProbeRequest) (*AddProbeResponse, error) {
 	log.Info().Msgf("received new probe result for %d ", r.MeasureID)
 	m, err := s.measures.Get(int(r.MeasureID))
 	if err != nil {
@@ -35,11 +35,10 @@ func (s *Fetcher) AddProbe(c context.Context, r *AddProbeRequest) (*AddProbeResp
 	}
 	p := measure.NewProbe(r.Response, r.Duration, r.CreatedAt)
 	m.AddProbe(p)
-	log.Info().Msgf("AddProbe for %d ", r.MeasureID)
 	return &AddProbeResponse{}, nil
 }
 
-func (s *Fetcher) ListenForChanges(r *ListenForChangesRequest, stream FetcherService_ListenForChangesServer) error {
+func (s *Fetcher) ListenForChanges(_ *ListenForChangesRequest, stream FetcherService_ListenForChangesServer) error {
 	s.streams = append(s.streams, &stream)
 	for {
 		select {
