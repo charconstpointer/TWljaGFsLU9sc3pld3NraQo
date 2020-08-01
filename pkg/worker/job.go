@@ -6,11 +6,34 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+type job interface {
+	Exec()
+	Done() chan struct{}
+	Unit() Unit
+	Ticker() time.Ticker
+}
+
 //Job represents a task that should be executed on a set interval
 type Job struct {
 	D chan struct{}
 	T *time.Ticker
 	u Unit
+}
+
+func (j *Job) Exec() {
+	panic("implement me")
+}
+
+func (j *Job) Done() chan struct{}{
+	return j.D
+}
+
+func (j *Job) Unit() Unit{
+	return j.u
+}
+
+func (j *Job) Ticker() *time.Ticker {
+	return j.T
 }
 
 //Result is an outcome of a single job execution
@@ -40,9 +63,4 @@ func (j *Job) Cancel() {
 	default:
 		log.Info().Msgf("can not cancell job %v", &j)
 	}
-}
-
-//Unit .
-func (j *Job) Unit() Unit {
-	return j.u
 }
