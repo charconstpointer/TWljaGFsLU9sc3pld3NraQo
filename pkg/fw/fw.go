@@ -2,17 +2,20 @@ package fw
 
 import (
 	"fmt"
-	"golang.org/x/sync/errgroup"
+	"github.com/rs/zerolog/log"
 )
 
 type worker interface {
 	Start() error
 	AddJob()
+	Done() chan struct{}
 }
 
 type Worker struct {
-	jobs  []job
-	queue chan job
+	jobs    []job
+	queue   chan job
+	d       chan struct{}
+	running bool
 }
 
 func NewWorker() Worker {
@@ -22,29 +25,38 @@ func NewWorker() Worker {
 	}
 }
 
-func (w Worker) Start() error {
-	g := errgroup.Group{}
-
-	g.Go(func() error {
+func (w *Worker) Start() error {
+	ready := make(chan struct{}, 1)
+	go func() {
 		for {
-			select {}
+			select {
+			case ready <- struct{}{}:
+				//close(ready)
+			case job := <-w.queue:
+				w.jobs = append(w.jobs, job)
+				log.Info().Msg("added new job")
+			}
 		}
-	})
-
-	err := g.Wait()
-	if err != nil {
-		return err
-	}
+	}()
+	<-ready
+	w.running = true
 	return nil
 }
 
-func (w Worker) AddJob(j job) error {
+func (w *Worker) AddJob(j job) error {
+	if !w.running {
+		return fmt.Errorf("could not enqueue new job, please make sure that the worker is running")
+	}
 	select {
 	case w.queue <- j:
-		w.jobs = append(w.jobs, j)
-	default:
-		return fmt.Errorf("could not enqueue new job, please make sure that the worker is running")
+		log.Info().Msg("enqueued new job")
+		//default:
+		//	return fmt.Errorf("could not enqueue new job, please make sure that the worker is running")
 	}
 	return nil
 
+}
+
+func (w *Worker) Done() chan struct{} {
+	return w.d
 }
