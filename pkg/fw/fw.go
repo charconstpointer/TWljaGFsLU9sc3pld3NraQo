@@ -1,6 +1,7 @@
 package fw
 
 import (
+	"context"
 	"fmt"
 	"github.com/rs/zerolog/log"
 )
@@ -31,10 +32,8 @@ func (w *Worker) Start() error {
 		for {
 			select {
 			case ready <- struct{}{}:
-				//close(ready)
 			case job := <-w.queue:
-				w.jobs = append(w.jobs, job)
-				log.Info().Msg("added new job")
+				go w.runJob(job)
 			}
 		}
 	}()
@@ -59,4 +58,28 @@ func (w *Worker) AddJob(j job) error {
 
 func (w *Worker) Done() chan struct{} {
 	return w.d
+}
+
+func (w *Worker) runJob(j job) {
+	result := make(chan Result, 1)
+	w.jobs = append(w.jobs, j)
+
+	go func(result <-chan Result) {
+		for {
+			select {
+			case r := <-result:
+				log.Info().
+					Str("result", r.value[:25]).
+					Msg("job")
+			}
+		}
+	}(result)
+
+	log.Info().Msg("added new job")
+	err := j.Exec(context.Background(), result)
+
+	if err != nil {
+		log.Error().Msg(err.Error())
+	}
+
 }

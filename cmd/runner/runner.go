@@ -16,11 +16,17 @@ func main() {
 	if err != nil {
 		log.Error().Msg(err.Error())
 	}
+	jobs := []fw.Desc{
+		fw.NewDesc("https://latozradiem.pl/api/stars", 7),
+		fw.NewDesc("https://google.com", 5),
+		fw.NewDesc("https://apipodcasts.polskieradio.pl/api/podcasts", 9),
+	}
 
-	jobDesc := fw.NewDesc("https://google.com", 5)
-	job := fw.NewJob(jobDesc)
+	for _, jd := range jobs {
+		job := fw.NewJob(jd)
+		_ = w.AddJob(job)
+	}
 
-	err = w.AddJob(job)
 	if err != nil {
 		log.Error().Msg(err.Error())
 	}
