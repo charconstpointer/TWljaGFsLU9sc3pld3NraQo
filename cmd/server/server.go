@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher/router"
 	"github.com/jmoiron/sqlx"
 	"net"
 	"net/http"
@@ -13,7 +14,6 @@ import (
 	"time"
 
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher"
-	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher/router"
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/measure"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -23,7 +23,7 @@ import (
 
 var (
 	httpPort = flag.Int("http", 8080, "port to listen on for incoming http requests")
-	grpcPort = flag.Int("grpc", 8082, "port to listen on for incoming grpc requests")
+	grpcPort = flag.Int("grpc", 8084, "port to listen on for incoming grpc requests")
 
 	grpcServer *grpc.Server
 	httpServer *http.Server
@@ -47,7 +47,6 @@ func main() {
 	repo := measure.MySQLRepo{
 		DB: db,
 	}
-	//repo := measure.NewMeasuresRepo()
 	srv := fetcher.NewFetcher(ctx, repo)
 
 	g, ctx := errgroup.WithContext(ctx)
@@ -62,12 +61,12 @@ func main() {
 		grpcServer = grpc.NewServer()
 
 		fetcher.RegisterFetcherServiceServer(grpcServer, srv)
-		log.Info().Msgf("Starting gRPC server 🎞 %v", time.Now())
+		log.Info().Msgf("Starting gRPC server %v", time.Now())
 		return grpcServer.Serve(lis)
 	})
 
 	g.Go(func() error {
-		log.Info().Msgf("Starting http server 🧧🎡 %v", time.Now())
+		log.Info().Msgf("Starting http server %v", time.Now())
 		httpAddr := ":" + strconv.Itoa(*httpPort)
 		r := router.New(srv)
 

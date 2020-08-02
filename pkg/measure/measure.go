@@ -8,6 +8,17 @@ type Measure struct {
 	probes   []*Probe
 }
 
+//Measures is a repository layer for an measure aggregate
+type Measures interface {
+	Save(m *Measure) (int, error)
+	SaveProbe(ID int, p Probe) error
+	Get(ID int) (*Measure, error)
+	GetByUrl(URL string) (*Measure, error)
+	GetAll() ([]*Measure, error)
+	Update(ID int, interval int) error
+	Delete(ID int) error
+}
+
 //NewMeasure is
 func NewMeasure(url string, interval int) *Measure {
 	return &Measure{

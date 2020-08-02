@@ -64,30 +64,6 @@ func (mr MySQLRepo) Save(m *Measure) (int, error) {
 		return e.Id, err
 	}
 	return e.Id, nil
-	//rows, err := mr.DB.Queryx(q, m.url)
-	//if rows == nil || !rows.Next() || err != nil {
-	//	q = "INSERT INTO Measurements (Url, Delay)" +
-	//	    "VALUES (?,?)"
-	//
-	//	res, err := mr.DB.Exec(q, m.url, m.interval)
-	//	if err != nil {
-	//		return -1, err
-	//	}
-	//
-	//	iid, err := res.LastInsertId()
-	//	if err != nil {
-	//		return -1, err
-	//	}
-	//	return int(iid), nil
-	//}
-	//q = "UPDATE Measurements " +
-	//    "SET Delay =? " +
-	//    "WHERE Url =? "
-	//_, err = mr.DB.Exec(q, m.interval, m.url)
-	//if err != nil {
-	//	return err
-	//}
-	//return nil
 }
 
 func (mr MySQLRepo) Get(ID int) (*Measure, error) {
@@ -180,13 +156,9 @@ func (mr MySQLRepo) Update(ID int, interval int) error {
 		return err
 	}
 
-	//raf, err := res.RowsAffected()
-	//if int(raf) != 1 {
-	//	return fmt.Errorf("something went wrong while updating measure %d", ID)
-	//}
-
 	return nil
 }
+
 func (mr MySQLRepo) SaveProbe(ID int, p Probe) error {
 	q := "INSERT INTO Probes (MeasurementId, Response, Duration, CreatedAt) " +
 		"VALUES (?, ?, ?, ?)"
@@ -196,6 +168,7 @@ func (mr MySQLRepo) SaveProbe(ID int, p Probe) error {
 	}
 	return nil
 }
+
 func (mr MySQLRepo) Delete(ID int) error {
 	q := "DELETE FROM Measurements" +
 		"WHERE Measurements.Id = ? "

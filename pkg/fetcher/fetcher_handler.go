@@ -26,33 +26,22 @@ func (s *Fetcher) HandleCreateMeasure(w http.ResponseWriter, r *http.Request) {
 	}
 
 	m, _ := s.measures.GetByUrl(cm.URL)
-
+	//if already exists then update
 	if m != nil {
-		id := m.AsDto().ID
-		err := s.measures.Update(id, cm.Interval)
+		id, err := s.UpdateMeasure(m, cm.Interval)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		select {
-		case s.Edt <- *m:
-		default:
-
-		}
-		w.WriteHeader(http.StatusOK)
 		c := createdResponse{Id: id}
 		b, err := json.Marshal(c)
 		_, _ = w.Write(b)
+		w.WriteHeader(http.StatusOK)
 		return
 	}
 
-	m = measure.NewMeasure(cm.URL, cm.Interval)
-	id, err := s.measures.Save(m)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	}
+	id, err := s.CreateMeasure(cm)
 
-	err = s.enqueue(m)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
@@ -60,7 +49,6 @@ func (s *Fetcher) HandleCreateMeasure(w http.ResponseWriter, r *http.Request) {
 	c := createdResponse{Id: id}
 	b, err := json.Marshal(c)
 	_, _ = w.Write(b)
-
 	w.WriteHeader(http.StatusOK)
 }
 
