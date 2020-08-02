@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/measure"
 	"github.com/rs/zerolog/log"
+	"net/http"
 )
 
 type Impr struct {
@@ -13,6 +14,23 @@ type Impr struct {
 	Edt      chan measure.Measure
 	ctx      context.Context
 	streams  []*FetcherService_ListenForChangesServer
+}
+
+type Fetcher interface {
+	CreateOrUpdate(createMeasure measure.CreateMeasure) (int, error)
+	CreateMeasure(measure.CreateMeasure) (int, error)
+	UpdateMeasure(measure *measure.Measure, interval int) (int, error)
+	DeleteMeasure() error
+	GetAllMeasures() []measure.Dto
+	GetHistory(measureID int) ([]measure.ProbeDto, error)
+}
+
+type Handler interface {
+	HandleCreateMeasure(w http.ResponseWriter, r *http.Request)
+	HandleGetAllMeasures(w http.ResponseWriter, _ *http.Request)
+	HandleDeleteMeasure(w http.ResponseWriter, r *http.Request)
+	HandleGetHistory(w http.ResponseWriter, r *http.Request)
+	enqueue(m *measure.Measure) error
 }
 
 func (s Impr) mustEmbedUnimplementedFetcherServiceServer() {
@@ -31,17 +49,20 @@ func NewImpr(ctx context.Context, measures measure.Measures) *Impr {
 
 func (s Impr) CreateOrUpdate(createMeasure measure.CreateMeasure) (int, error) {
 	m, _ := s.measures.GetByUrl(createMeasure.URL)
-	mID := m.AsDto().ID
-
 	if m != nil {
+		mID := m.AsDto().ID
+
 		err := s.measures.Update(mID, createMeasure.Interval)
 		if err != nil {
 			return -1, err
 		}
+		s.Edt <- *m
 		return mID, nil
 	}
-
+	m = measure.NewMeasure(createMeasure.URL, createMeasure.Interval)
+	s.Add <- *m
 	return s.measures.Save(m)
+
 }
 
 func (s Impr) CreateMeasure(m measure.CreateMeasure) (int, error) {
@@ -55,7 +76,7 @@ func (s Impr) UpdateMeasure(measure *measure.Measure, interval int) (int, error)
 }
 
 func (s Impr) DeleteMeasure(ID int) error {
-	err := s.DeleteMeasure(ID)
+	err := s.measures.Delete(ID)
 	if err != nil {
 		return err
 	}

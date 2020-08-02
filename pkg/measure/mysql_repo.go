@@ -34,12 +34,12 @@ func (e entity) AsMeasure() *Measure {
 }
 
 func (mr MySQLRepo) Save(m *Measure) (int, error) {
-	q := "SELECT Id FROM Measurements " +
-		"WHERE Measurements.Url=?"
+	q := "SELECT * FROM Measurements " +
+		"WHERE Id = ?"
+	var e []entity
+	err := mr.DB.Select(&e, q, m.id)
 
-	var e entity
-	err := mr.DB.Select(&e, q, m.url)
-	if err != nil {
+	if len(e) == 0 {
 		q = "INSERT INTO Measurements (Url, Delay)" +
 			"VALUES (?,?)"
 
@@ -54,15 +54,15 @@ func (mr MySQLRepo) Save(m *Measure) (int, error) {
 		}
 		return int(iid), nil
 	}
-
+	ms := e[0]
 	q = "UPDATE Measurements " +
 		"SET Delay =? " +
 		"WHERE Url =? "
 	_, err = mr.DB.Exec(q, m.interval, m.url)
 	if err != nil {
-		return e.Id, err
+		return ms.Id, err
 	}
-	return e.Id, nil
+	return ms.Id, nil
 }
 
 func (mr MySQLRepo) Get(ID int) (*Measure, error) {
@@ -71,7 +71,7 @@ func (mr MySQLRepo) Get(ID int) (*Measure, error) {
 	var e []entity
 	err := mr.DB.Select(&e, q, ID)
 
-	if err != nil {
+	if len(e) == 0 {
 		log.Err(err)
 		return nil, err
 	}
@@ -154,7 +154,7 @@ func (mr MySQLRepo) SaveProbe(ID int, p Probe) error {
 }
 
 func (mr MySQLRepo) Delete(ID int) error {
-	q := "DELETE FROM Measurements" +
+	q := "DELETE FROM Measurements " +
 		"WHERE Measurements.Id = ? "
 
 	res, err := mr.DB.Exec(q, ID)

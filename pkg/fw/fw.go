@@ -145,7 +145,7 @@ func (w *Worker) runJob(j job) {
 			select {
 			case r := <-result:
 				log.Info().
-					Str("result", r.Res[:25]).
+					Float64("result", r.Dur).
 					Msg("job")
 				err := w.bp.SaveResult(context.Background(), r)
 				if err != nil {
