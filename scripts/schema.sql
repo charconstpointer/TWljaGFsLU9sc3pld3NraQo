@@ -1,6 +1,7 @@
 CREATE TABLE Measurements(
         Id INT NOT NULL AUTO_INCREMENT,
         Url VARCHAR(255) NOT NULL,
+        Delay INT NOT NULL,
         PRIMARY KEY(Id)
 );
 CREATE TABLE Probes (

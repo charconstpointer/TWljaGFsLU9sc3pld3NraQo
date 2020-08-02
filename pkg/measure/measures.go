@@ -2,7 +2,7 @@ package measure
 
 //Measures is a repository layer for an measure aggregate
 type Measures interface {
-	Save(m *Measure) error
+	Save(m *Measure) (int, error)
 	Get(ID int) (*Measure, error)
 	GetByUrl(URL string) (*Measure, error)
 	GetAll() ([]*Measure, error)

@@ -34,28 +34,60 @@ func (e entity) AsMeasure() *Measure {
 	}
 }
 
-func (mr MySQLRepo) Save(m *Measure) error {
-	q := "SELECT 1 FROM Measurements " +
+func (mr MySQLRepo) Save(m *Measure) (int, error) {
+	q := "SELECT Id FROM Measurements " +
 		"WHERE Measurements.Url=?"
 
-	rows, err := mr.DB.Queryx(q, m.url)
-	if rows == nil || !rows.Next() || err != nil {
+	var e entity
+	err := mr.DB.Select(&e, q, m.url)
+	if err != nil {
 		q = "INSERT INTO Measurements (Url, Delay)" +
 			"VALUES (?,?)"
-		_, err := mr.DB.Exec(q, m.url, m.interval)
+
+		res, err := mr.DB.Exec(q, m.url, m.interval)
 		if err != nil {
-			return err
+			return -1, err
 		}
-		return nil
+
+		iid, err := res.LastInsertId()
+		if err != nil {
+			return -1, err
+		}
+		return int(iid), nil
 	}
+
 	q = "UPDATE Measurements " +
 		"SET Delay =? " +
 		"WHERE Url =? "
 	_, err = mr.DB.Exec(q, m.interval, m.url)
 	if err != nil {
-		return err
+		return e.Id, err
 	}
-	return nil
+	return e.Id, nil
+	//rows, err := mr.DB.Queryx(q, m.url)
+	//if rows == nil || !rows.Next() || err != nil {
+	//	q = "INSERT INTO Measurements (Url, Delay)" +
+	//	    "VALUES (?,?)"
+	//
+	//	res, err := mr.DB.Exec(q, m.url, m.interval)
+	//	if err != nil {
+	//		return -1, err
+	//	}
+	//
+	//	iid, err := res.LastInsertId()
+	//	if err != nil {
+	//		return -1, err
+	//	}
+	//	return int(iid), nil
+	//}
+	//q = "UPDATE Measurements " +
+	//    "SET Delay =? " +
+	//    "WHERE Url =? "
+	//_, err = mr.DB.Exec(q, m.interval, m.url)
+	//if err != nil {
+	//	return err
+	//}
+	//return nil
 }
 
 func (mr MySQLRepo) Get(ID int) (*Measure, error) {
@@ -138,20 +170,20 @@ func (mr MySQLRepo) GetAll() ([]*Measure, error) {
 }
 
 func (mr MySQLRepo) Update(ID int, interval int) error {
-	q := "UPDATE Measurements" +
-		"SET Interval = ?" +
+	q := "UPDATE Measurements " +
+		"SET Delay = ? " +
 		"WHERE Measurements.Id = ? "
 
-	res, err := mr.DB.Exec(q, interval, ID)
+	_, err := mr.DB.Exec(q, interval, ID)
 	if err != nil {
 		log.Err(err)
 		return err
 	}
 
-	raf, err := res.RowsAffected()
-	if int(raf) != 1 {
-		return fmt.Errorf("something went wrong while updating measure %d", ID)
-	}
+	//raf, err := res.RowsAffected()
+	//if int(raf) != 1 {
+	//	return fmt.Errorf("something went wrong while updating measure %d", ID)
+	//}
 
 	return nil
 }

@@ -34,7 +34,11 @@ func (s *Fetcher) HandleCreateMeasure(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		s.Edt <- *m
+		select {
+		case s.Edt <- *m:
+		default:
+
+		}
 		w.WriteHeader(http.StatusOK)
 		c := createdResponse{Id: id}
 		b, err := json.Marshal(c)
@@ -43,7 +47,7 @@ func (s *Fetcher) HandleCreateMeasure(w http.ResponseWriter, r *http.Request) {
 	}
 
 	m = measure.NewMeasure(cm.URL, cm.Interval)
-	err := s.measures.Save(m)
+	id, err := s.measures.Save(m)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
@@ -53,7 +57,7 @@ func (s *Fetcher) HandleCreateMeasure(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 
-	c := createdResponse{Id: m.AsDto().ID}
+	c := createdResponse{Id: id}
 	b, err := json.Marshal(c)
 	_, _ = w.Write(b)
 
