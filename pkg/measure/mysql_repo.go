@@ -1,9 +1,10 @@
 package measure
 
 import (
+	"fmt"
+	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
-	"time"
 )
 
 type MySQLRepo struct {
@@ -11,20 +12,26 @@ type MySQLRepo struct {
 }
 
 type entity struct {
-	Id            int       `db:"Id"`
-	Url           string    `db:"Url"`
-	Response      string    `db:"Response"`
-	Duration      float32   `db:"Duration"`
-	CreatedAt     time.Time `db:"CreatedAt"`
-	MeasurementId int       `db:"MeasurementId"`
+	Id       int    `db:"Id"`
+	Url      string `db:"Url"`
+	Interval int    `db:"Delay"`
 }
 
 type probe struct {
-	Id            int       `db:"Id"`
-	Response      string    `db:"Response"`
-	Duration      float32   `db:"Duration"`
-	CreatedAt     time.Time `db:"CreatedAt"`
-	MeasurementId int       `db:"MeasurementId"`
+	Id            int            `db:"Id"`
+	Response      string         `db:"Response"`
+	Duration      float32        `db:"Duration"`
+	CreatedAt     mysql.NullTime `db:"CreatedAt"`
+	MeasurementId int            `db:"MeasurementId"`
+}
+
+func (e entity) AsMeasure() *Measure {
+	return &Measure{
+		id:       e.Id,
+		url:      e.Url,
+		interval: e.Interval,
+		probes:   make([]*Probe, 0),
+	}
 }
 
 func (mr *MySQLRepo) Save(m *Measure) error {
@@ -53,10 +60,49 @@ func (mr *MySQLRepo) Save(m *Measure) error {
 
 func (mr *MySQLRepo) Get(ID int) (*Measure, error) {
 	q := "SELECT * FROM Measurements " +
-		"JOIN Probes P on Measurements.Id = P.MeasurementId " +
 		"WHERE Measurements.Id=?"
-
+	var e []entity
 	rows, err := mr.DB.Queryx(q, ID)
+
+	if err != nil {
+		log.Err(err)
+		return nil, err
+	}
+
+	for rows.Next() {
+		var e entity
+		err = rows.StructScan(&e)
+		if err != nil {
+			log.Info().Msgf("%v\n", e)
+			return nil, err
+		}
+
+		q := "SELECT * FROM Probes " +
+			"WHERE MeasurementId=?"
+		var p []probe
+
+		err = mr.DB.Select(&p, q, ID)
+		measure := e.AsMeasure()
+
+		for _, probe := range p {
+			measure.AddProbe(NewProbe(probe.Response, probe.Duration, float32(probe.CreatedAt.Time.Unix())))
+		}
+
+		return measure, nil
+
+	}
+
+	asd := len(e)
+	log.Info().Int("x", asd)
+
+	return nil, fmt.Errorf("could not query requested measure %s", ID)
+}
+
+func (mr *MySQLRepo) GetByUrl(URL string) (*Measure, error) {
+	q := "SELECT * FROM Measurements " +
+		"WHERE Measurements.Url=?"
+
+	rows, err := mr.DB.Queryx(q, URL)
 
 	if err != nil {
 		log.Err(err)
@@ -66,24 +112,75 @@ func (mr *MySQLRepo) Get(ID int) (*Measure, error) {
 	for rows.Next() {
 		var p entity
 		err = rows.StructScan(&p)
-		log.Info().Msgf("%v\n", p)
+		if err != nil {
+			log.Info().Msgf("%v\n", p)
+			return nil, err
+		}
+
+		return p.AsMeasure(), nil
+
 	}
-	return nil, err
-
-}
-
-func (mr *MySQLRepo) GetByUrl(URL string) (*Measure, error) {
-	panic("implement me")
+	return nil, fmt.Errorf("could not query requested measure %s", URL)
 }
 
 func (mr *MySQLRepo) GetAll() ([]*Measure, error) {
-	panic("implement me")
+	var measures []entity
+	q := "SELECT * FROM Measurements "
+	err := mr.DB.Select(&measures, q)
+	if err != nil {
+		return nil, err
+	}
+	var m []*Measure
+	for _, measure := range measures {
+		m = append(m, measure.AsMeasure())
+	}
+
+	var probes []probe
+	q = "SELECT * FROM Probes " +
+		"WHERE MeasurementId =?"
+
+	err = mr.DB.Select(&probes, q, 10)
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range probes {
+		m[0].AddProbe(NewProbe(p.Response, p.Duration, float32(p.CreatedAt.Time.Unix())))
+	}
+	return m, nil
 }
 
 func (mr *MySQLRepo) Update(ID int, interval int) error {
-	panic("implement me")
+	q := "UPDATE Measurements" +
+		"SET Interval = ?" +
+		"WHERE Measurements.Id = ? "
+
+	res, err := mr.DB.Exec(q, interval, ID)
+	if err != nil {
+		log.Err(err)
+		return err
+	}
+
+	raf, err := res.RowsAffected()
+	if int(raf) != 1 {
+		return fmt.Errorf("something went wrong while updating measure %d", ID)
+	}
+
+	return nil
 }
 
 func (mr *MySQLRepo) Delete(ID int) error {
-	panic("implement me")
+	q := "DELETE FROM Measurements" +
+		"WHERE Measurements.Id = ? "
+
+	res, err := mr.DB.Exec(q, ID)
+	if err != nil {
+		log.Err(err)
+		return err
+	}
+
+	raf, err := res.RowsAffected()
+	if int(raf) != 1 {
+		return fmt.Errorf("something went wrong while deleting a measure %d", ID)
+	}
+	return nil
 }
