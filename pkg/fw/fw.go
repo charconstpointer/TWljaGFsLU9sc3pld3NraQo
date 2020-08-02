@@ -170,17 +170,17 @@ func (w *Worker) handleEvent(ev *fetcher.ListenForChangesResponse) {
 
 	case fetcher.Change_EDITED:
 		log.Info().Msgf("updating job %d", ev.MeasureID)
-		//job := NewJob(int(ev.Measure.ID), ev.Measure.URL, int(ev.Measure.Interval))
-		//err := w.UpdateJob(job)
-		//if err != nil {
-		//	log.Error().Msg("cannot add new job")
-		//}
+		job := NewJob(int(ev.Measure.ID), ev.Measure.URL, int(ev.Measure.Interval))
+		err := w.UpdateJob(job)
+		if err != nil {
+			log.Error().Msg("cannot add new job")
+		}
 
 	case fetcher.Change_DELETED:
 		log.Info().Msgf("deleting job %d", ev.MeasureID)
-		//err := w.StopJob(int(ev.MeasureID))
-		//if err != nil {
-		//	log.Error().Msg("cannot add new job")
-		//}
+		err := w.StopJob(int(ev.MeasureID))
+		if err != nil {
+			log.Error().Msg("cannot add new job")
+		}
 	}
 }

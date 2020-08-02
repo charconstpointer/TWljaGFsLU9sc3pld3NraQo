@@ -62,12 +62,12 @@ func main() {
 		grpcServer = grpc.NewServer()
 
 		fetcher.RegisterFetcherServiceServer(grpcServer, srv)
-		log.Info().Msgf("Starting gRPC server %v", time.Now())
+		log.Info().Msgf("Starting gRPC server 🎞 %v", time.Now())
 		return grpcServer.Serve(lis)
 	})
 
 	g.Go(func() error {
-		log.Info().Msgf("Starting http server %v", time.Now())
+		log.Info().Msgf("Starting http server 🧧🎡 %v", time.Now())
 		httpAddr := ":" + strconv.Itoa(*httpPort)
 		r := router.New(srv)
 
