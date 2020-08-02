@@ -1,11 +1,12 @@
 package fw
 
-type Result struct {
-	value string
-}
+import "time"
 
-func NewResult(value string) Result {
-	return Result{
-		value: value,
-	}
+type Result struct {
+	ID      int
+	URL     string
+	Success bool
+	Res     string
+	Dur     float64
+	Date    time.Time
 }

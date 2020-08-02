@@ -98,7 +98,7 @@ func (r *UnitsRepo) Add(ctx context.Context, res Result) error {
 //events without a need to restart
 func (r *UnitsRepo) Events(ctx context.Context) chan *fetcher.ListenForChangesResponse {
 	ec := make(chan *fetcher.ListenForChangesResponse)
-	s, err := r.c.ListenForChanges(ctx, &fetcher.ListenForChangesRequest{})
+	s, err := r.c.ListenForChanges(ctx)
 	if err != nil {
 		log.Error().Err(err)
 	}

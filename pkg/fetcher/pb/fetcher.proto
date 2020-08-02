@@ -6,7 +6,7 @@ option go_package = "pkg/fetcher";
 service FetcherService {
         rpc GetMeasures (GetMeasuresRequest) returns (GetMeasuresResponse);
         rpc AddProbe (AddProbeRequest) returns (AddProbeResponse);
-        rpc ListenForChanges (ListenForChangesRequest) returns (stream ListenForChangesResponse);
+        rpc ListenForChanges (stream ListenForChangesRequest) returns (stream ListenForChangesResponse);
 }
 
 message Measure {
@@ -29,7 +29,7 @@ enum Change {
         EDITED = 2;
 }
 message ListenForChangesRequest {
-
+        bool closed = 1;
 }
 //I know im duplicating data here, measureID and id inside a measure,
 //but the idea behind that was, that when im sending DELETED event

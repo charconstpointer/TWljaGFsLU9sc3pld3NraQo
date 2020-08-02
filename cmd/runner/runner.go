@@ -1,35 +1,58 @@
 package main
 
 import (
+	"context"
+	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher"
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fw"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"os"
+	"google.golang.org/grpc"
 )
 
 func main() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
-	w := fw.NewWorker()
-	err := w.Start()
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(interrupt)
+
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	conn, err := grpc.Dial(
+		fmt.Sprintf(":%d", 8082),
+		grpc.WithInsecure(), grpc.WithBlock(),
+		grpc.WithTimeout(time.Duration(5000)*time.Millisecond),
+	)
+	defer conn.Close()
+
+	log.Info().Msg("connected to fetcher server")
+
+	c := fetcher.NewFetcherServiceClient(conn)
+	bp := fw.NewFetcherBackplane(c)
+
+	w := fw.NewWorker(bp)
+	go w.Start(ctx)
 	if err != nil {
 		log.Error().Msg(err.Error())
 	}
-	jobs := []fw.Desc{
-		fw.NewDesc("https://latozradiem.pl/api/stars", 7),
-		fw.NewDesc("https://google.com", 5),
-		fw.NewDesc("https://apipodcasts.polskieradio.pl/api/podcasts", 9),
+
+	select {
+	case <-interrupt:
+		err := w.Stop()
+		if err != nil {
+			log.Error().Msg(err.Error())
+		}
+		log.Info().Msg("interrupt")
+		os.Exit(0)
 	}
 
-	for _, jd := range jobs {
-		job := fw.NewJob(jd)
-		_ = w.AddJob(job)
-	}
-
-	if err != nil {
-		log.Error().Msg(err.Error())
-	}
-
-	<-w.Done()
 }
