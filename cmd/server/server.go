@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"github.com/jmoiron/sqlx"
 	"net"
 	"net/http"
 	"os"
@@ -42,7 +43,11 @@ func main() {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	repo := measure.NewMeasuresRepo()
+	db, _ := sqlx.Connect("mysql", "root:password@tcp(127.0.0.1:3306)/foobar")
+	repo := measure.MySQLRepo{
+		DB: db,
+	}
+	//repo := measure.NewMeasuresRepo()
 	srv := fetcher.NewFetcher(ctx, repo)
 
 	g, ctx := errgroup.WithContext(ctx)

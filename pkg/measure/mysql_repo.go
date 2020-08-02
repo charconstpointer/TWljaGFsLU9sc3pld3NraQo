@@ -34,7 +34,7 @@ func (e entity) AsMeasure() *Measure {
 	}
 }
 
-func (mr *MySQLRepo) Save(m *Measure) error {
+func (mr MySQLRepo) Save(m *Measure) error {
 	q := "SELECT 1 FROM Measurements " +
 		"WHERE Measurements.Url=?"
 
@@ -58,7 +58,7 @@ func (mr *MySQLRepo) Save(m *Measure) error {
 	return nil
 }
 
-func (mr *MySQLRepo) Get(ID int) (*Measure, error) {
+func (mr MySQLRepo) Get(ID int) (*Measure, error) {
 	q := "SELECT * FROM Measurements " +
 		"WHERE Measurements.Id=?"
 	var e []entity
@@ -98,7 +98,7 @@ func (mr *MySQLRepo) Get(ID int) (*Measure, error) {
 	return nil, fmt.Errorf("could not query requested measure %s", ID)
 }
 
-func (mr *MySQLRepo) GetByUrl(URL string) (*Measure, error) {
+func (mr MySQLRepo) GetByUrl(URL string) (*Measure, error) {
 	q := "SELECT * FROM Measurements " +
 		"WHERE Measurements.Url=?"
 
@@ -123,7 +123,7 @@ func (mr *MySQLRepo) GetByUrl(URL string) (*Measure, error) {
 	return nil, fmt.Errorf("could not query requested measure %s", URL)
 }
 
-func (mr *MySQLRepo) GetAll() ([]*Measure, error) {
+func (mr MySQLRepo) GetAll() ([]*Measure, error) {
 	var measures []entity
 	q := "SELECT * FROM Measurements "
 	err := mr.DB.Select(&measures, q)
@@ -134,22 +134,10 @@ func (mr *MySQLRepo) GetAll() ([]*Measure, error) {
 	for _, measure := range measures {
 		m = append(m, measure.AsMeasure())
 	}
-
-	var probes []probe
-	q = "SELECT * FROM Probes " +
-		"WHERE MeasurementId =?"
-
-	err = mr.DB.Select(&probes, q, 10)
-	if err != nil {
-		return nil, err
-	}
-	for _, p := range probes {
-		m[0].AddProbe(NewProbe(p.Response, p.Duration, float32(p.CreatedAt.Time.Unix())))
-	}
 	return m, nil
 }
 
-func (mr *MySQLRepo) Update(ID int, interval int) error {
+func (mr MySQLRepo) Update(ID int, interval int) error {
 	q := "UPDATE Measurements" +
 		"SET Interval = ?" +
 		"WHERE Measurements.Id = ? "
@@ -168,7 +156,7 @@ func (mr *MySQLRepo) Update(ID int, interval int) error {
 	return nil
 }
 
-func (mr *MySQLRepo) Delete(ID int) error {
+func (mr MySQLRepo) Delete(ID int) error {
 	q := "DELETE FROM Measurements" +
 		"WHERE Measurements.Id = ? "
 

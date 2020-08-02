@@ -3,7 +3,7 @@ Accept: application/json
 
 ###
 
-GET http://localhost:8080/api/fetcher/0
+GET http://localhost:8080/api/fetcher/10
 Accept: application/json
 ###
 
