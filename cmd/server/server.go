@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher/router"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"net"
 	"net/http"
@@ -31,7 +33,7 @@ var (
 
 func main() {
 	flag.Parse()
-
+	fmt.Println(" ________ _______  _________  ________  ___  ___  _______   ________           _______      ________     \n|\\  _____\\\\  ___ \\|\\___   ___\\\\   ____\\|\\  \\|\\  \\|\\  ___ \\ |\\   __  \\         /  ___  \\    |\\   __  \\    \n\\ \\  \\__/\\ \\   __/\\|___ \\  \\_\\ \\  \\___|\\ \\  \\\\\\  \\ \\   __/|\\ \\  \\|\\  \\       /__/|_/  /|   \\ \\  \\|\\  \\   \n \\ \\   __\\\\ \\  \\_|/__  \\ \\  \\ \\ \\  \\    \\ \\   __  \\ \\  \\_|/_\\ \\   _  _\\      |__|//  / /    \\ \\  \\\\\\  \\  \n  \\ \\  \\_| \\ \\  \\_|\\ \\  \\ \\  \\ \\ \\  \\____\\ \\  \\ \\  \\ \\  \\_|\\ \\ \\  \\\\  \\|         /  /_/__  __\\ \\  \\\\\\  \\ \n   \\ \\__\\   \\ \\_______\\  \\ \\__\\ \\ \\_______\\ \\__\\ \\__\\ \\_______\\ \\__\\\\ _\\        |\\________\\\\__\\ \\_______\\\n    \\|__|    \\|_______|   \\|__|  \\|_______|\\|__|\\|__|\\|_______|\\|__|\\|__|        \\|_______\\|__|\\|_______|\n                                                                                                         \n                                                                                                         \n                                                                                                         ")
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(interrupt)
@@ -43,11 +45,14 @@ func main() {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	db, _ := sqlx.Connect("mysql", "root:password@tcp(127.0.0.1:3306)/foobar")
+	db, err := sqlx.Connect("mysql", "root:password@tcp(127.0.0.1:3306)/foobar")
+	if err != nil {
+		log.Error().Msg("cant connect to mysql")
+	}
 	repo := measure.MySQLRepo{
 		DB: db,
 	}
-	srv := fetcher.NewFetcher(ctx, repo)
+	srv := fetcher.NewImpr(ctx, repo)
 
 	g, ctx := errgroup.WithContext(ctx)
 
@@ -95,7 +100,7 @@ func main() {
 		grpcServer.Stop()
 	}
 
-	err := g.Wait()
+	err = g.Wait()
 	if err != nil {
 		log.Error().Err(err)
 		os.Exit(2)

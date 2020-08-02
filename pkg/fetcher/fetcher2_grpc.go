@@ -1,14 +1,14 @@
 package fetcher
 
 import (
-	context "context"
+	"context"
 	"strconv"
 
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/measure"
 	"github.com/rs/zerolog/log"
 )
 
-func (s *Fetch) GetMeasures(context.Context, *GetMeasuresRequest) (*GetMeasuresResponse, error) {
+func (s *Impr) GetMeasures(context.Context, *GetMeasuresRequest) (*GetMeasuresResponse, error) {
 	msrs, err := s.measures.GetAll()
 	if err != nil {
 		return nil, err
@@ -27,7 +27,7 @@ func (s *Fetch) GetMeasures(context.Context, *GetMeasuresRequest) (*GetMeasuresR
 
 }
 
-func (s *Fetch) AddProbe(_ context.Context, r *AddProbeRequest) (*AddProbeResponse, error) {
+func (s *Impr) AddProbe(_ context.Context, r *AddProbeRequest) (*AddProbeResponse, error) {
 	log.Info().
 		Str("measure", strconv.Itoa(int(r.MeasureID))).
 		Float32("duration", r.Duration).
@@ -43,7 +43,7 @@ func (s *Fetch) AddProbe(_ context.Context, r *AddProbeRequest) (*AddProbeRespon
 	m.AddProbe(p)
 	return &AddProbeResponse{}, nil
 }
-func (s *Fetch) ListenForChanges(_ *ListenForChangesRequest, stream FetcherService_ListenForChangesServer) error {
+func (s *Impr) ListenForChanges(_ *ListenForChangesRequest, stream FetcherService_ListenForChangesServer) error {
 	s.streams = append(s.streams, &stream)
 	for {
 		select {
@@ -78,39 +78,11 @@ func (s *Fetch) ListenForChanges(_ *ListenForChangesRequest, stream FetcherServi
 	}
 }
 
-// func (s *Fetch) ListenForChanges(_ *ListenForChangesRequest, stream FetcherService_ListenForChangesServer) error {
-// 	s.streams = append(s.streams, &stream)
-// 	for {
-// 		select {
-// 		case m := <-s.Add:
-// 			s.propagate(m, Change_CREATED)
-// 		case m := <-s.Edt:
-// 			s.propagate(m, Change_EDITED)
-// 		case id := <-s.Rmv:
-// 			for _, s := range s.streams {
-// 				err := (*s).Send(&ListenForChangesResponse{
-// 					Change:    Change_DELETED,
-// 					MeasureID: int32(id),
-// 					Measure:   nil,
-// 				})
-// 				if err != nil {
-// 					log.Fatal().Msg(err.Error())
-// 					continue
-// 				}
-// 			}
-// 		case _ = <-s.ctx.Done():
-// 			log.Info().Msg("closing grpc stream")
-// 			return s.ctx.Err()
-
-// 		}
-// 	}
-// }
-
-func (s *Fetch) mustEmbedUnimplementedFetcherServiceServer() {
+func (s *Impr) mustEmbedUnimplementedImprServiceServer() {
 
 }
 
-func (s *Fetch) propagate(m measure.Measure, c Change) {
+func (s *Impr) propagate(m measure.Measure, c Change) {
 	dto := m.AsDto()
 	for _, s := range s.streams {
 		err := (*s).Send(&ListenForChangesResponse{

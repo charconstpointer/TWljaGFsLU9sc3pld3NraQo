@@ -9,7 +9,7 @@ import (
 )
 
 //New is
-func New(s *fetcher.Fetcher) *chi.Mux {
+func New(s fetcher.Handler) *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(requestSize)

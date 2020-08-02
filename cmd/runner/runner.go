@@ -28,7 +28,7 @@ func main() {
 	defer cancel()
 
 	conn, err := grpc.Dial(
-		fmt.Sprintf(":%d", 8082),
+		fmt.Sprintf(":%d", 8084),
 		grpc.WithInsecure(), grpc.WithBlock(),
 		grpc.WithTimeout(time.Duration(5000)*time.Millisecond),
 	)

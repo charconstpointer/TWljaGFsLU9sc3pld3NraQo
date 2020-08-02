@@ -2,7 +2,6 @@ package measure
 
 import (
 	"fmt"
-	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
 )
@@ -18,11 +17,11 @@ type entity struct {
 }
 
 type probe struct {
-	Id            int            `db:"Id"`
-	Response      string         `db:"Response"`
-	Duration      float32        `db:"Duration"`
-	CreatedAt     mysql.NullTime `db:"CreatedAt"`
-	MeasurementId int            `db:"MeasurementId"`
+	Id            int     `db:"Id"`
+	Response      string  `db:"Response"`
+	Duration      float32 `db:"Duration"`
+	CreatedAt     int     `db:"CreatedAt"`
+	MeasurementId int     `db:"MeasurementId"`
 }
 
 func (e entity) AsMeasure() *Measure {
@@ -68,42 +67,27 @@ func (mr MySQLRepo) Save(m *Measure) (int, error) {
 
 func (mr MySQLRepo) Get(ID int) (*Measure, error) {
 	q := "SELECT * FROM Measurements " +
-		"WHERE Measurements.Id=?"
+		"WHERE Id = ?"
 	var e []entity
-	rows, err := mr.DB.Queryx(q, ID)
+	err := mr.DB.Select(&e, q, ID)
 
 	if err != nil {
 		log.Err(err)
 		return nil, err
 	}
+	m := e[0]
+	q = "SELECT * FROM Probes " +
+		"WHERE MeasurementId=?"
+	var p []probe
 
-	for rows.Next() {
-		var e entity
-		err = rows.StructScan(&e)
-		if err != nil {
-			log.Info().Msgf("%v\n", e)
-			return nil, err
-		}
+	err = mr.DB.Select(&p, q, ID)
+	measure := m.AsMeasure()
 
-		q := "SELECT * FROM Probes " +
-			"WHERE MeasurementId=?"
-		var p []probe
-
-		err = mr.DB.Select(&p, q, ID)
-		measure := e.AsMeasure()
-
-		for _, probe := range p {
-			measure.AddProbe(NewProbe(probe.Response, probe.Duration, float32(probe.CreatedAt.Time.Unix())))
-		}
-
-		return measure, nil
-
+	for _, probe := range p {
+		measure.AddProbe(NewProbe(probe.Response, probe.Duration, float32(probe.CreatedAt)))
 	}
 
-	asd := len(e)
-	log.Info().Int("x", asd)
-
-	return nil, fmt.Errorf("could not query requested measure %s", ID)
+	return measure, nil
 }
 
 func (mr MySQLRepo) GetByUrl(URL string) (*Measure, error) {
