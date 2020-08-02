@@ -81,6 +81,7 @@ func (s Impr) DeleteMeasure(ID int) error {
 		return err
 	}
 	select {
+
 	case s.Rmv <- ID:
 		log.Info().Msgf("notification sent  %d", ID)
 	default:
