@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 )
@@ -65,7 +66,8 @@ func (w *Worker) Start(ctx context.Context) error {
 		for _, j := range jobs {
 			err := w.AddJob(j)
 			if err != nil {
-				log.Warn().Msg("cannot enqueue job received over the wire")
+				err := errors.Wrap(err, "cannot enqueue job received over the wire")
+				log.Warn().Msg(err.Error())
 				continue
 			}
 		}
@@ -99,8 +101,8 @@ func (w *Worker) AddJob(j job) error {
 	select {
 	case w.queue <- j:
 		log.Info().Msg("enqueued new job")
-	default:
-		return fmt.Errorf("could not enqueue new job")
+		//default:
+		//	return fmt.Errorf("could not enqueue new job")
 	}
 	return nil
 
@@ -145,6 +147,10 @@ func (w *Worker) runJob(j job) {
 				log.Info().
 					Str("result", r.Res[:25]).
 					Msg("job")
+				err := w.bp.SaveResult(context.Background(), r)
+				if err != nil {
+					log.Error().Msgf("%s", err.Error())
+				}
 			}
 		}
 	}(result)

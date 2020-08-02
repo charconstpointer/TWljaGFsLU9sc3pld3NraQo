@@ -32,13 +32,14 @@ func (s *Fetcher) AddProbe(_ context.Context, r *AddProbeRequest) (*AddProbeResp
 		Str("measure", strconv.Itoa(int(r.MeasureID))).
 		Float32("duration", r.Duration).
 		Msg("received new probe result")
-
+	p := measure.NewProbe(r.Response, r.Duration, r.CreatedAt)
+	err := s.measures.SaveProbe(int(r.MeasureID), *p)
 	m, err := s.measures.Get(int(r.MeasureID))
+
 	if err != nil {
 		log.Warn().Msgf("received err probe result for %d ", r.MeasureID)
 		return nil, err
 	}
-	p := measure.NewProbe(r.Response, r.Duration, r.CreatedAt)
 	m.AddProbe(p)
 	return &AddProbeResponse{}, nil
 }

@@ -9,6 +9,7 @@ require (
 	github.com/golang/protobuf v1.4.2
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/labstack/gommon v0.3.0
+	github.com/pkg/errors v0.8.1
 	github.com/rs/zerolog v1.19.0
 	github.com/sqs/goreturns v0.0.0-20181028201513-538ac6014518
 	github.com/stretchr/objx v0.3.0 // indirect

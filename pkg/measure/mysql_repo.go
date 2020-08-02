@@ -187,7 +187,15 @@ func (mr MySQLRepo) Update(ID int, interval int) error {
 
 	return nil
 }
-
+func (mr MySQLRepo) SaveProbe(ID int, p Probe) error {
+	q := "INSERT INTO Probes (MeasurementId, Response, Duration, CreatedAt) " +
+		"VALUES (?, ?, ?, ?)"
+	_, err := mr.DB.Exec(q, ID, p.response[:255], p.duration, p.createdAt)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 func (mr MySQLRepo) Delete(ID int) error {
 	q := "DELETE FROM Measurements" +
 		"WHERE Measurements.Id = ? "

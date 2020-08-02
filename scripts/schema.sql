@@ -9,7 +9,7 @@ CREATE TABLE Probes (
         MeasurementId INT NOT NULL,
         Response VARCHAR(255) NOT NULL,
         Duration DECIMAL NOT NULL,
-        CreatedAt DATETIME NOT NULL,
+        CreatedAt INT NOT NULL,
         PRIMARY KEY(Id),
         CONSTRAINT `fk_measurement_id` FOREIGN KEY (MeasurementId) REFERENCES Measurements (Id) ON DELETE CASCADE ON UPDATE RESTRICT
 );
