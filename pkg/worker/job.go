@@ -24,11 +24,11 @@ func (j *Job) Exec() {
 	panic("implement me")
 }
 
-func (j *Job) Done() chan struct{}{
+func (j *Job) Done() chan struct{} {
 	return j.D
 }
 
-func (j *Job) Unit() Unit{
+func (j *Job) Unit() Unit {
 	return j.u
 }
 

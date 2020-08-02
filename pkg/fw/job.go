@@ -4,54 +4,81 @@ import (
 	"context"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
+	"io/ioutil"
 	"net/http"
 	"time"
 )
 
 type job interface {
-	Exec(ctx context.Context) error
-	desc()
+	Exec(ctx context.Context, res chan<- Result) error
+	Stop()
+	Id() int
 }
 
 type Job struct {
-	d Desc
+	id       int
+	url      string
+	interval int
+	d        chan struct{}
 }
 
-
-func NewJob(d Desc) Job {
+func NewJob(id int, url string, interval int) Job {
 	return Job{
-		d: d,
+		id:       id,
+		url:      url,
+		interval: interval,
 	}
 }
 
-func (j Job) desc() {
-	panic("implement me")
-}
-
-func (j Job) Exec(ctx context.Context) error {
+func (j Job) Exec(ctx context.Context, res chan<- Result) error {
 	c := http.Client{}
 	g := errgroup.Group{}
 	g.Go(func() error {
-		t := time.NewTicker(time.Duration(j.d.interval) * time.Second)
+		t := time.NewTicker(time.Duration(j.interval) * time.Second)
 		for {
 			select {
 			case _ = <-t.C:
 				log.Info().
-					Str("URL", j.d.url).
-					Int("interval", j.d.interval).
+					Str("URL", j.url).
+					Int("interval", j.interval).
 					Msg("fetching")
-				_, err := c.Get(j.d.url)
+
+				start := time.Now()
+				r, err := c.Get(j.url)
+				stop := time.Since(start)
+
 				if err != nil {
-					log.Warn().Msgf("request to %s failed", j.d.url)
+					log.Warn().Msgf("request to %s failed", j.url)
 					continue
 				}
-				log.Info().
-					Str("URL", j.d.url).
-					Int("interval", j.d.interval).
-					Msg("finished successfully")
 
+				b, _ := ioutil.ReadAll(r.Body)
+				rs := Result{
+					ID:      j.id,
+					URL:     j.url,
+					Res:     string(b),
+					Dur:     stop.Seconds(),
+					Success: true,
+					Date:    time.Now(),
+				}
+
+				select {
+				case res <- rs:
+				default:
+					log.Warn().
+						Str("URL", j.url).
+						Int("interval", j.interval).
+						Msg("could not save the job's outcome, channel is full")
+				}
+
+				log.Info().
+					Str("URL", j.url).
+					Int("interval", j.interval).
+					Msg("finished successfully")
 			case _ = <-ctx.Done():
 				return ctx.Err()
+			case _ = <-j.d:
+				return nil
 			}
 		}
 	})
@@ -60,4 +87,21 @@ func (j Job) Exec(ctx context.Context) error {
 		return err
 	}
 	return nil
+}
+
+func (j Job) Stop() {
+	select {
+	case j.d <- struct{}{}:
+		log.Info().
+			Int("ID", j.id).
+			Msg("stopping job")
+	default:
+		log.Error().
+			Int("ID", j.id).
+			Msg("cannot stop job")
+	}
+}
+
+func (j Job) Id() int {
+	return j.id
 }
