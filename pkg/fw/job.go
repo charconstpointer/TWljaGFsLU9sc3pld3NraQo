@@ -31,7 +31,9 @@ func NewJob(id int, url string, interval int) Job {
 }
 
 func (j Job) Exec(ctx context.Context, res chan<- Result) error {
-	c := http.Client{}
+	c := http.Client{
+		Timeout: 5 * time.Second,
+	}
 	g := errgroup.Group{}
 	g.Go(func() error {
 		t := time.NewTicker(time.Duration(j.interval) * time.Second)

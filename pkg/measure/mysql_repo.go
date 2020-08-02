@@ -146,7 +146,8 @@ func (mr MySQLRepo) Update(ID int, interval int) error {
 func (mr MySQLRepo) SaveProbe(ID int, p Probe) error {
 	q := "INSERT INTO Probes (MeasurementId, Response, Duration, CreatedAt) " +
 		"VALUES (?, ?, ?, ?)"
-	_, err := mr.DB.Exec(q, ID, p.response[:255], p.duration, p.createdAt)
+
+	_, err := mr.DB.Exec(q, ID, p.response, p.duration, p.createdAt)
 	if err != nil {
 		return err
 	}
