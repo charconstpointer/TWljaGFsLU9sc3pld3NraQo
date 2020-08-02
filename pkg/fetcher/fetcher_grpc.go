@@ -42,26 +42,8 @@ func (s *Fetcher) AddProbe(_ context.Context, r *AddProbeRequest) (*AddProbeResp
 	m.AddProbe(p)
 	return &AddProbeResponse{}, nil
 }
-func (s *Fetcher) ListenForChanges(str FetcherService_ListenForChangesServer) error {
-	go func() {
-		for {
-			_, err := str.Recv()
-			if err != nil {
-				log.Error().Err(err)
-				for i, stream := range s.streams {
-					log.Warn().Msg("for i, stream := range s.streams {")
-					if *stream == str {
-						log.Warn().Msg("if *stream == str{")
-						s.streams = append(s.streams[:i], s.streams[i+1:]...)
-						continue
-					}
-				}
-				return
-			}
-
-		}
-	}()
-	s.streams = append(s.streams, &str)
+func (s *Fetcher) ListenForChanges(_ *ListenForChangesRequest, stream FetcherService_ListenForChangesServer) error {
+	s.streams = append(s.streams, &stream)
 	for {
 		select {
 		case m := <-s.Add:
@@ -69,15 +51,22 @@ func (s *Fetcher) ListenForChanges(str FetcherService_ListenForChangesServer) er
 		case m := <-s.Edt:
 			s.propagate(m, Change_EDITED)
 		case id := <-s.Rmv:
-			for _, s := range s.streams {
-				err := (*s).Send(&ListenForChangesResponse{
+			for _, str := range s.streams {
+				err := (*str).Send(&ListenForChangesResponse{
 					Change:    Change_DELETED,
 					MeasureID: int32(id),
 					Measure:   nil,
 				})
 				if err != nil {
-					log.Fatal().Msg(err.Error())
-					continue
+					for i, stream := range s.streams {
+						log.Warn().Msg("for i, stream := range s.streams {")
+						if stream == str {
+							log.Warn().Msg("if *stream == str{")
+							s.streams = append(s.streams[:i], s.streams[i+1:]...)
+							continue
+						}
+					}
+					return nil
 				}
 			}
 		case _ = <-s.ctx.Done():

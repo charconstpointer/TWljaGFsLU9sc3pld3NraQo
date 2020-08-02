@@ -76,25 +76,18 @@ func (r *FetcherBackplane) SaveResult(ctx context.Context, res Result) error {
 //events without a need to restart
 func (r *FetcherBackplane) Events(ctx context.Context) chan *fetcher.ListenForChangesResponse {
 	ec := make(chan *fetcher.ListenForChangesResponse)
-	s, err := r.c.ListenForChanges(ctx)
+	s, err := r.c.ListenForChanges(ctx, &fetcher.ListenForChangesRequest{})
 	if err != nil {
 		log.Error().Err(err)
 	}
 	go func() {
 		for {
-			select {
-			case _ = <-r.d:
-				err = s.Send(&fetcher.ListenForChangesRequest{
-					Closed: false,
-				})
-			default:
-				res, err := s.Recv()
-				if err != nil {
-					close(ec)
-					return
-				}
-				ec <- res
+			res, err := s.Recv()
+			if err != nil {
+				close(ec)
+				return
 			}
+			ec <- res
 
 		}
 	}()

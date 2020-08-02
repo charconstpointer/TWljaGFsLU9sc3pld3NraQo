@@ -2,6 +2,7 @@ package fetcher
 
 import (
 	"context"
+
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/measure"
 )
 

@@ -19,7 +19,7 @@ const _ = grpc.SupportPackageIsVersion6
 type FetcherServiceClient interface {
 	GetMeasures(ctx context.Context, in *GetMeasuresRequest, opts ...grpc.CallOption) (*GetMeasuresResponse, error)
 	AddProbe(ctx context.Context, in *AddProbeRequest, opts ...grpc.CallOption) (*AddProbeResponse, error)
-	ListenForChanges(ctx context.Context, opts ...grpc.CallOption) (FetcherService_ListenForChangesClient, error)
+	ListenForChanges(ctx context.Context, in *ListenForChangesRequest, opts ...grpc.CallOption) (FetcherService_ListenForChangesClient, error)
 }
 
 type fetcherServiceClient struct {
@@ -48,27 +48,28 @@ func (c *fetcherServiceClient) AddProbe(ctx context.Context, in *AddProbeRequest
 	return out, nil
 }
 
-func (c *fetcherServiceClient) ListenForChanges(ctx context.Context, opts ...grpc.CallOption) (FetcherService_ListenForChangesClient, error) {
+func (c *fetcherServiceClient) ListenForChanges(ctx context.Context, in *ListenForChangesRequest, opts ...grpc.CallOption) (FetcherService_ListenForChangesClient, error) {
 	stream, err := c.cc.NewStream(ctx, &_FetcherService_serviceDesc.Streams[0], "/fetcher.FetcherService/ListenForChanges", opts...)
 	if err != nil {
 		return nil, err
 	}
 	x := &fetcherServiceListenForChangesClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
 	return x, nil
 }
 
 type FetcherService_ListenForChangesClient interface {
-	Send(*ListenForChangesRequest) error
 	Recv() (*ListenForChangesResponse, error)
 	grpc.ClientStream
 }
 
 type fetcherServiceListenForChangesClient struct {
 	grpc.ClientStream
-}
-
-func (x *fetcherServiceListenForChangesClient) Send(m *ListenForChangesRequest) error {
-	return x.ClientStream.SendMsg(m)
 }
 
 func (x *fetcherServiceListenForChangesClient) Recv() (*ListenForChangesResponse, error) {
@@ -85,7 +86,7 @@ func (x *fetcherServiceListenForChangesClient) Recv() (*ListenForChangesResponse
 type FetcherServiceServer interface {
 	GetMeasures(context.Context, *GetMeasuresRequest) (*GetMeasuresResponse, error)
 	AddProbe(context.Context, *AddProbeRequest) (*AddProbeResponse, error)
-	ListenForChanges(FetcherService_ListenForChangesServer) error
+	ListenForChanges(*ListenForChangesRequest, FetcherService_ListenForChangesServer) error
 	mustEmbedUnimplementedFetcherServiceServer()
 }
 
@@ -99,7 +100,7 @@ func (*UnimplementedFetcherServiceServer) GetMeasures(context.Context, *GetMeasu
 func (*UnimplementedFetcherServiceServer) AddProbe(context.Context, *AddProbeRequest) (*AddProbeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddProbe not implemented")
 }
-func (*UnimplementedFetcherServiceServer) ListenForChanges(FetcherService_ListenForChangesServer) error {
+func (*UnimplementedFetcherServiceServer) ListenForChanges(*ListenForChangesRequest, FetcherService_ListenForChangesServer) error {
 	return status.Errorf(codes.Unimplemented, "method ListenForChanges not implemented")
 }
 func (*UnimplementedFetcherServiceServer) mustEmbedUnimplementedFetcherServiceServer() {}
@@ -145,12 +146,15 @@ func _FetcherService_AddProbe_Handler(srv interface{}, ctx context.Context, dec 
 }
 
 func _FetcherService_ListenForChanges_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(FetcherServiceServer).ListenForChanges(&fetcherServiceListenForChangesServer{stream})
+	m := new(ListenForChangesRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(FetcherServiceServer).ListenForChanges(m, &fetcherServiceListenForChangesServer{stream})
 }
 
 type FetcherService_ListenForChangesServer interface {
 	Send(*ListenForChangesResponse) error
-	Recv() (*ListenForChangesRequest, error)
 	grpc.ServerStream
 }
 
@@ -160,14 +164,6 @@ type fetcherServiceListenForChangesServer struct {
 
 func (x *fetcherServiceListenForChangesServer) Send(m *ListenForChangesResponse) error {
 	return x.ServerStream.SendMsg(m)
-}
-
-func (x *fetcherServiceListenForChangesServer) Recv() (*ListenForChangesRequest, error) {
-	m := new(ListenForChangesRequest)
-	if err := x.ServerStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
 }
 
 var _FetcherService_serviceDesc = grpc.ServiceDesc{
@@ -188,7 +184,6 @@ var _FetcherService_serviceDesc = grpc.ServiceDesc{
 			StreamName:    "ListenForChanges",
 			Handler:       _FetcherService_ListenForChanges_Handler,
 			ServerStreams: true,
-			ClientStreams: true,
 		},
 	},
 	Metadata: "pkg/fetcher/pb/fetcher.proto",
