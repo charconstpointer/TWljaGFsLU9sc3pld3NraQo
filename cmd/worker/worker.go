@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"os"
 	"os/signal"
@@ -11,22 +10,12 @@ import (
 
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher"
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/worker"
-
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 )
 
-var (
-	grpcPort    = flag.Int("grpc", 8082, "server grpc port")
-	timeout     = flag.Int("timeout", 5000, "http client timeout in ms")
-	grpcTimeout = flag.Int("dial", 5000, "grpc dial timeout in ms")
-)
-
 func main() {
-	flag.Parse()
-
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
@@ -36,44 +25,34 @@ func main() {
 
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-	g := errgroup.Group{}
-	g.Go(func() error {
-		log.Info().Msg("starting gRPC connection with a server")
+	conn, err := grpc.Dial(
+		fmt.Sprintf(":%d", 8084),
+		grpc.WithInsecure(), grpc.WithBlock(),
+		grpc.WithTimeout(time.Duration(5000)*time.Millisecond),
+	)
+	defer conn.Close()
 
-		conn, err := grpc.Dial(
-			fmt.Sprintf(":%d", *grpcPort),
-			grpc.WithInsecure(), grpc.WithBlock(),
-			grpc.WithTimeout(time.Duration(*grpcTimeout)*time.Millisecond),
-		)
-		defer conn.Close()
+	log.Info().Msg("connected to fetcher server")
 
-		if err != nil {
-			log.Fatal().Msg("can't connect to fetcher server")
-			return err
-		}
+	c := fetcher.NewFetcherServiceClient(conn)
+	bp := worker.NewFetcherBackplane(c)
 
-		log.Info().Msg("connected to fetcher server")
-
-		c := fetcher.NewFetcherServiceClient(conn)
-		repo := worker.NewProbesRepo(c)
-		w := worker.NewWorker(*timeout, repo)
-		log.Info().Msg("starting worker")
-		err = w.Start(ctx)
-
-		return err
-	})
+	w := worker.NewWorker(bp)
+	go w.Start(ctx)
+	if err != nil {
+		log.Error().Msg(err.Error())
+	}
 
 	select {
 	case <-interrupt:
-		cancel()
-		break
-	}
-
-	err := g.Wait()
-	if err != nil {
-		log.Error().Err(err)
-		os.Exit(2)
+		err := w.Stop()
+		if err != nil {
+			log.Error().Msg(err.Error())
+		}
+		log.Info().Msg("interrupt")
+		os.Exit(0)
 	}
 
 }

@@ -2,73 +2,34 @@ package worker
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher"
 	"github.com/rs/zerolog/log"
 )
 
-//Unit .
-type Unit struct {
-	id       int
-	url      string
-	interval int
-}
-
-//NewProbe .
-func NewUnit(id int, url string, interval int) *Unit {
-	return &Unit{
-		id:       id,
-		url:      url,
-		interval: interval,
-	}
-}
-
-//AsProbe .
-func AsUnit(ms []*fetcher.Measure) []*Unit {
-	probes := make([]*Unit, 0)
-	for _, m := range ms {
-		probes = append(probes, NewUnit(int(m.ID), m.URL, int(m.Interval)))
-	}
-	return probes
-}
-
-//Probes .
-type Units interface {
-	All(context.Context) ([]*Unit, error)
-	Add(context.Context, Result) error
+type backplane interface {
+	Jobs(context.Context) ([]job, error)
+	SaveResult(context.Context, Result) error
 	Events(context.Context) chan *fetcher.ListenForChangesResponse
+	Close() error
 }
 
-//ProbesRepo .
-type UnitsRepo struct {
+type FetcherBackplane struct {
 	c fetcher.FetcherServiceClient
+	d chan struct{}
 }
 
-type UnitsRepoMock struct {
-}
-
-func (p UnitsRepoMock) All(_ context.Context) ([]*Unit, error) {
-	return nil, nil
-}
-
-func (p UnitsRepoMock) Add(_ context.Context, _ Result) error {
-	return nil
-}
-
-func (p UnitsRepoMock) Events(_ context.Context) chan *fetcher.ListenForChangesResponse {
-	return make(chan *fetcher.ListenForChangesResponse)
-}
-
-//NewProbesRepo .
-func NewProbesRepo(c fetcher.FetcherServiceClient) *UnitsRepo {
-	return &UnitsRepo{
+func NewFetcherBackplane(c fetcher.FetcherServiceClient) *FetcherBackplane {
+	return &FetcherBackplane{
 		c: c,
+		d: make(chan struct{}, 1),
 	}
 }
 
 //All fetches all currenly created jobs, this should only by used on startup, after that,
 //you should be listening to incoming events and reacting to them
-func (r *UnitsRepo) All(ctx context.Context) ([]*Unit, error) {
+func (r *FetcherBackplane) Jobs(ctx context.Context) ([]job, error) {
 	p, err := r.c.GetMeasures(ctx, &fetcher.GetMeasuresRequest{})
 
 	if err != nil {
@@ -79,8 +40,25 @@ func (r *UnitsRepo) All(ctx context.Context) ([]*Unit, error) {
 	return ps, nil
 }
 
+func AsUnit(ms []*fetcher.Measure) []job {
+	probes := make([]job, 0)
+	for _, m := range ms {
+		probes = append(probes, NewJob(int(m.ID), m.URL, int(m.Interval)))
+	}
+	return probes
+}
+
+func (r *FetcherBackplane) Close() error {
+	select {
+	case r.d <- struct{}{}:
+		return nil
+	default:
+		return fmt.Errorf("cannot close gRPC connection")
+	}
+}
+
 //Add persists job's result
-func (r *UnitsRepo) Add(ctx context.Context, res Result) error {
+func (r *FetcherBackplane) SaveResult(ctx context.Context, res Result) error {
 	_, err := r.c.AddProbe(ctx, &fetcher.AddProbeRequest{
 		MeasureID: int32(res.ID),
 		CreatedAt: float32(res.Date.Unix()),
@@ -96,7 +74,7 @@ func (r *UnitsRepo) Add(ctx context.Context, res Result) error {
 //Events returns a channel which will contain any event published by the job producer,
 //for example, new job created, job edited, job deleted, worker should react to those
 //events without a need to restart
-func (r *UnitsRepo) Events(ctx context.Context) chan *fetcher.ListenForChangesResponse {
+func (r *FetcherBackplane) Events(ctx context.Context) chan *fetcher.ListenForChangesResponse {
 	ec := make(chan *fetcher.ListenForChangesResponse)
 	s, err := r.c.ListenForChanges(ctx, &fetcher.ListenForChangesRequest{})
 	if err != nil {
@@ -110,6 +88,7 @@ func (r *UnitsRepo) Events(ctx context.Context) chan *fetcher.ListenForChangesRe
 				return
 			}
 			ec <- res
+
 		}
 	}()
 	return ec

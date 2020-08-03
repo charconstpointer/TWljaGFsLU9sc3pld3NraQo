@@ -1,66 +1,113 @@
 package worker
 
 import (
-	"time"
-
+	"context"
+	"fmt"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/errgroup"
+	"io/ioutil"
+	"net/http"
+	"time"
 )
 
 type job interface {
-	Exec()
-	Done() chan struct{}
-	Unit() Unit
-	Ticker() time.Ticker
+	Exec(ctx context.Context, res chan<- Result) error
+	Stop()
+	Id() int
 }
 
-//Job represents a task that should be executed on a set interval
 type Job struct {
-	D chan struct{}
-	T *time.Ticker
-	u Unit
+	id       int
+	url      string
+	interval int
+	d        chan struct{}
 }
 
-func (j *Job) Exec() {
-	panic("implement me")
-}
-
-func (j *Job) Done() chan struct{} {
-	return j.D
-}
-
-func (j *Job) Unit() Unit {
-	return j.u
-}
-
-func (j *Job) Ticker() *time.Ticker {
-	return j.T
-}
-
-//Result is an outcome of a single job execution
-type Result struct {
-	ID      int
-	URL     string
-	Success bool
-	Res     string
-	Dur     float64
-	Date    time.Time
-}
-
-//NewJob .
-func NewJob(u *Unit) *Job {
-	return &Job{
-		u: *u,
-		D: make(chan struct{}, 1),
-		T: time.NewTicker(time.Duration(u.interval) * time.Second),
+func NewJob(id int, url string, interval int) Job {
+	return Job{
+		id:       id,
+		url:      url,
+		interval: interval,
+		d:        make(chan struct{}),
 	}
 }
 
-//Cancel sends singal to terminate job exection
-func (j *Job) Cancel() {
+func (j Job) Exec(ctx context.Context, res chan<- Result) error {
+	c := http.Client{
+		Timeout: 5 * time.Second,
+	}
+	g := errgroup.Group{}
+	g.Go(func() error {
+		t := time.NewTicker(time.Duration(j.interval) * time.Second)
+		for {
+			select {
+			case _ = <-j.d:
+				log.Warn().Msg("case _ = <-j.d:case _ = <-j.d:case _ = <-j.d:case _ = <-j.d:case _ = <-j.d:")
+				return fmt.Errorf("something something")
+			case _ = <-t.C:
+				log.Info().
+					Str("URL", j.url).
+					Int("interval", j.interval).
+					Msg("fetching")
+
+				start := time.Now()
+				r, err := c.Get(j.url)
+				stop := time.Since(start)
+
+				if err != nil {
+					log.Warn().Msgf("request to %s failed", j.url)
+					continue
+				}
+
+				b, _ := ioutil.ReadAll(r.Body)
+				rs := Result{
+					ID:      j.id,
+					URL:     j.url,
+					Res:     string(b),
+					Dur:     stop.Seconds(),
+					Success: true,
+					Date:    time.Now(),
+				}
+
+				select {
+				case res <- rs:
+				default:
+					log.Warn().
+						Str("URL", j.url).
+						Int("interval", j.interval).
+						Msg("could not save the job's outcome, channel is full")
+				}
+
+				log.Info().
+					Str("URL", j.url).
+					Int("interval", j.interval).
+					Msg("finished successfully")
+			case _ = <-ctx.Done():
+				return ctx.Err()
+
+			}
+		}
+	})
+	err := g.Wait()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (j Job) Stop() {
 	select {
-	case j.D <- struct{}{}:
-		log.Info().Msgf("cancelling job %v", &j)
+	case j.d <- struct{}{}:
+		log.Info().
+			Int("ID", j.id).
+			Msg("stopping job")
 	default:
-		log.Info().Msgf("can not cancell job %v", &j)
+		log.Error().
+			Int("ID", j.id).
+			Msg("cannot stop job")
 	}
+}
+
+func (j Job) Id() int {
+	return j.id
 }

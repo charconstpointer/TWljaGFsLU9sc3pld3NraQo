@@ -47,7 +47,8 @@ func main() {
 
 	db, err := sqlx.Connect("mysql", "root:password@tcp(127.0.0.1:3306)/foobar")
 	if err != nil {
-		log.Error().Msg("cant connect to mysql")
+		log.Error().Msg("can't connect to mysql")
+		os.Exit(1)
 	}
 	repo := measure.MySQLRepo{
 		DB: db,
@@ -103,7 +104,7 @@ func main() {
 	err = g.Wait()
 	if err != nil {
 		log.Error().Err(err)
-		os.Exit(2)
+		os.Exit(1)
 	}
 
 }
