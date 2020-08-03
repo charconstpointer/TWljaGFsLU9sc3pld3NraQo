@@ -30,6 +30,7 @@ func NewFetcherBackplane(c fetcher.FetcherServiceClient) *FetcherBackplane {
 //All fetches all currenly created jobs, this should only by used on startup, after that,
 //you should be listening to incoming events and reacting to them
 func (r *FetcherBackplane) Jobs(ctx context.Context) ([]job, error) {
+	log.Info().Msg("🕵 fetching initial jobs to run")
 	p, err := r.c.GetMeasures(ctx, &fetcher.GetMeasuresRequest{})
 
 	if err != nil {
@@ -59,6 +60,7 @@ func (r *FetcherBackplane) Close() error {
 
 //Add persists job's result
 func (r *FetcherBackplane) SaveResult(ctx context.Context, res Result) error {
+	log.Info().Int("ID", res.ID).Msg("🖋 saving job result")
 	_, err := r.c.AddProbe(ctx, &fetcher.AddProbeRequest{
 		MeasureID: int32(res.ID),
 		CreatedAt: float32(res.Date.Unix()),
@@ -77,6 +79,7 @@ func (r *FetcherBackplane) SaveResult(ctx context.Context, res Result) error {
 func (r *FetcherBackplane) Events(ctx context.Context) chan *fetcher.ListenForChangesResponse {
 	ec := make(chan *fetcher.ListenForChangesResponse)
 	s, err := r.c.ListenForChanges(ctx, &fetcher.ListenForChangesRequest{})
+	log.Info().Msg("👀 started listening for server events")
 	if err != nil {
 		log.Error().Err(err)
 	}

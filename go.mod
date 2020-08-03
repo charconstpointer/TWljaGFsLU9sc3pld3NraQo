@@ -3,6 +3,7 @@ module github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo
 go 1.13
 
 require (
+	github.com/common-nighthawk/go-figure v0.0.0-20200609044655-c4b36f998cf2
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/golang/mock v1.4.3 // indirect

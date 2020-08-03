@@ -73,7 +73,7 @@ func (mr MySQLRepo) Get(ID int) (*Measure, error) {
 
 	if len(e) == 0 {
 		log.Err(err)
-		return nil, err
+		return nil, fmt.Errorf("measure with id %d could not be found", ID)
 	}
 	m := e[0]
 	q = "SELECT * FROM Probes " +

@@ -63,6 +63,9 @@ func (w *Worker) Start(ctx context.Context) error {
 			log.Fatal().Msgf("cannot do inital fetch for already existing units")
 			return err
 		}
+		log.Info().
+			Int("count", len(jobs)).
+			Msg("received jobs")
 		for _, j := range jobs {
 			err := w.AddJob(j)
 			if err != nil {
@@ -100,7 +103,7 @@ func (w *Worker) AddJob(j job) error {
 	}
 	select {
 	case w.queue <- j:
-		log.Info().Msg("enqueued new job")
+		//log.Info().Msg("enqueued new job")
 		//default:
 		//	return fmt.Errorf("could not enqueue new job")
 	}
@@ -159,7 +162,6 @@ func (w *Worker) runJob(j job) {
 		}
 	}(result)
 
-	log.Info().Msg("added new job")
 	err := j.Exec(context.Background(), result)
 
 	if err != nil {
@@ -171,7 +173,7 @@ func (w *Worker) runJob(j job) {
 func (w *Worker) handleEvent(ev *fetcher.ListenForChangesResponse) {
 	switch ev.Change {
 	case fetcher.Change_CREATED:
-		log.Info().Msgf("starting job %d", ev.MeasureID)
+		log.Info().Int32("ID", ev.MeasureID).Msg("starting job ")
 		job := NewJob(int(ev.Measure.ID), ev.Measure.URL, int(ev.Measure.Interval))
 		err := w.AddJob(job)
 		if err != nil {
@@ -187,7 +189,9 @@ func (w *Worker) handleEvent(ev *fetcher.ListenForChangesResponse) {
 		}
 
 	case fetcher.Change_DELETED:
-		log.Info().Msgf("deleting job %d", ev.MeasureID)
+		log.Info().
+			Int32("ID", ev.MeasureID).
+			Msgf("deleting job %d", ev.MeasureID)
 		err := w.StopJob(int(ev.MeasureID))
 		if err != nil {
 			log.Error().Msg("cannot add new job")

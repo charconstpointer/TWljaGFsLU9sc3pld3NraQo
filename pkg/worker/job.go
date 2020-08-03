@@ -2,7 +2,6 @@ package worker
 
 import (
 	"context"
-	"fmt"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 	"io/ioutil"
@@ -42,8 +41,7 @@ func (j Job) Exec(ctx context.Context, res chan<- Result) error {
 		for {
 			select {
 			case _ = <-j.d:
-				log.Warn().Msg("case _ = <-j.d:case _ = <-j.d:case _ = <-j.d:case _ = <-j.d:case _ = <-j.d:")
-				return fmt.Errorf("something something")
+				return nil
 			case _ = <-t.C:
 				log.Info().
 					Str("URL", j.url).

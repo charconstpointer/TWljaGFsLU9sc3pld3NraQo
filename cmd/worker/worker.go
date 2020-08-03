@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/common-nighthawk/go-figure"
 	"os"
 	"os/signal"
 	"syscall"
@@ -16,8 +17,11 @@ import (
 )
 
 func main() {
+
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+
+	figure.NewColorFigure("worker", "slant", "blue", true).Print()
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
@@ -34,7 +38,7 @@ func main() {
 	)
 	defer conn.Close()
 
-	log.Info().Msg("connected to fetcher server")
+	log.Info().Msg("✅ connected to fetcher server")
 
 	c := fetcher.NewFetcherServiceClient(conn)
 	bp := worker.NewFetcherBackplane(c)
