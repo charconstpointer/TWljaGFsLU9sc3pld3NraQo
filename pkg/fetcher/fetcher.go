@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-type Impr struct {
+type Fetch struct {
 	measures measure.Measures
 	Add      chan measure.Measure
 	Rmv      chan int
@@ -33,12 +33,12 @@ type Handler interface {
 	enqueue(m *measure.Measure) error
 }
 
-func (s Impr) mustEmbedUnimplementedFetcherServiceServer() {
+func (s Fetch) mustEmbedUnimplementedFetcherServiceServer() {
 	panic("implement me")
 }
 
-func NewImpr(ctx context.Context, measures measure.Measures) *Impr {
-	return &Impr{
+func NewImpr(ctx context.Context, measures measure.Measures) *Fetch {
+	return &Fetch{
 		measures: measures,
 		Add:      make(chan measure.Measure),
 		Rmv:      make(chan int),
@@ -47,7 +47,7 @@ func NewImpr(ctx context.Context, measures measure.Measures) *Impr {
 	}
 }
 
-func (s Impr) CreateOrUpdate(createMeasure measure.CreateMeasure) (int, error) {
+func (s Fetch) CreateOrUpdate(createMeasure measure.CreateMeasure) (int, error) {
 	m, _ := s.measures.GetByUrl(createMeasure.URL)
 	if m != nil {
 		mID := m.AsDto().ID
@@ -80,17 +80,17 @@ func (s Impr) CreateOrUpdate(createMeasure measure.CreateMeasure) (int, error) {
 	return m.ID, nil
 }
 
-func (s Impr) CreateMeasure(m measure.CreateMeasure) (int, error) {
+func (s Fetch) CreateMeasure(m measure.CreateMeasure) (int, error) {
 	nm := measure.NewMeasure(m.URL, m.Interval)
 	id, err := s.measures.Save(nm)
 	return id, err
 }
 
-func (s Impr) UpdateMeasure(measure *measure.Measure, interval int) (int, error) {
+func (s Fetch) UpdateMeasure(measure *measure.Measure, interval int) (int, error) {
 	return s.UpdateMeasure(measure, interval)
 }
 
-func (s Impr) DeleteMeasure(ID int) error {
+func (s Fetch) DeleteMeasure(ID int) error {
 	err := s.measures.Delete(ID)
 	if err != nil {
 		return err
@@ -105,7 +105,7 @@ func (s Impr) DeleteMeasure(ID int) error {
 	return nil
 }
 
-func (s Impr) GetAllMeasures() ([]measure.Dto, error) {
+func (s Fetch) GetAllMeasures() ([]measure.Dto, error) {
 	m, err := s.measures.GetAll()
 	if err != nil {
 		return nil, err
@@ -118,7 +118,7 @@ func (s Impr) GetAllMeasures() ([]measure.Dto, error) {
 	return dtos, nil
 }
 
-func (s Impr) GetHistory(measureID int) ([]measure.ProbeDto, error) {
+func (s Fetch) GetHistory(measureID int) ([]measure.ProbeDto, error) {
 	m, err := s.measures.Get(measureID)
 	if err != nil {
 		return nil, err

@@ -11,7 +11,7 @@ import (
 )
 
 //HandleCreateMeasure is
-func (s Impr) HandleCreateMeasure(w http.ResponseWriter, r *http.Request) {
+func (s Fetch) HandleCreateMeasure(w http.ResponseWriter, r *http.Request) {
 	var cm measure.CreateMeasure
 
 	if err := json.NewDecoder(r.Body).Decode(&cm); err != nil {
@@ -37,7 +37,7 @@ func (s Impr) HandleCreateMeasure(w http.ResponseWriter, r *http.Request) {
 }
 
 //HandleGetAllMeasures is
-func (s Impr) HandleGetAllMeasures(w http.ResponseWriter, _ *http.Request) {
+func (s Fetch) HandleGetAllMeasures(w http.ResponseWriter, _ *http.Request) {
 	m, err := s.GetAllMeasures()
 
 	if err != nil {
@@ -57,7 +57,7 @@ func (s Impr) HandleGetAllMeasures(w http.ResponseWriter, _ *http.Request) {
 }
 
 //HandleDeleteMeasure is
-func (s Impr) HandleDeleteMeasure(w http.ResponseWriter, r *http.Request) {
+func (s Fetch) HandleDeleteMeasure(w http.ResponseWriter, r *http.Request) {
 	ID, err := strconv.Atoi(chi.URLParam(r, "id"))
 
 	if err != nil {
@@ -74,7 +74,7 @@ func (s Impr) HandleDeleteMeasure(w http.ResponseWriter, r *http.Request) {
 }
 
 //HandleGetHistory is
-func (s Impr) HandleGetHistory(w http.ResponseWriter, r *http.Request) {
+func (s Fetch) HandleGetHistory(w http.ResponseWriter, r *http.Request) {
 	ID, err := strconv.Atoi(chi.URLParam(r, "id"))
 
 	if err != nil {
@@ -94,7 +94,7 @@ func (s Impr) HandleGetHistory(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s Impr) enqueue(m *measure.Measure) error {
+func (s Fetch) enqueue(m *measure.Measure) error {
 	go func() {
 		s.Add <- *m
 	}()
