@@ -15,6 +15,6 @@ POST http://localhost:8080/api/fetcher
 Content-Type: application/json
 
 {
-        "url":"https://twitch.tv/foobar",
+        "url":"https://latozradiem.pl/api/articles",
         "interval":15
 }

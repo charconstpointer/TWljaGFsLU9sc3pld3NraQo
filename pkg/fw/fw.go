@@ -144,6 +144,10 @@ func (w *Worker) runJob(j job) {
 		for {
 			select {
 			case r := <-result:
+				resLen := len(r.Res)
+				if resLen > 255 {
+					r.Res = r.Res[:255]
+				}
 				log.Info().
 					Float64("result", r.Dur).
 					Msg("job")
