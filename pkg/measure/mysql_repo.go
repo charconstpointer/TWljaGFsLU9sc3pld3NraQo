@@ -26,10 +26,10 @@ type probe struct {
 
 func (e entity) AsMeasure() *Measure {
 	return &Measure{
-		id:       e.Id,
-		url:      e.Url,
-		interval: e.Interval,
-		probes:   make([]*Probe, 0),
+		ID:       e.Id,
+		URL:      e.Url,
+		Interval: e.Interval,
+		Probes:   make([]*Probe, 0),
 	}
 }
 
@@ -37,13 +37,13 @@ func (mr MySQLRepo) Save(m *Measure) (int, error) {
 	q := "SELECT * FROM Measurements " +
 		"WHERE Id = ?"
 	var e []entity
-	err := mr.DB.Select(&e, q, m.id)
+	err := mr.DB.Select(&e, q, m.ID)
 
 	if len(e) == 0 {
 		q = "INSERT INTO Measurements (Url, Delay)" +
 			"VALUES (?,?)"
 
-		res, err := mr.DB.Exec(q, m.url, m.interval)
+		res, err := mr.DB.Exec(q, m.URL, m.Interval)
 		if err != nil {
 			return -1, err
 		}
@@ -58,7 +58,7 @@ func (mr MySQLRepo) Save(m *Measure) (int, error) {
 	q = "UPDATE Measurements " +
 		"SET Delay =? " +
 		"WHERE Url =? "
-	_, err = mr.DB.Exec(q, m.interval, m.url)
+	_, err = mr.DB.Exec(q, m.Interval, m.URL)
 	if err != nil {
 		return ms.Id, err
 	}
@@ -144,10 +144,15 @@ func (mr MySQLRepo) Update(ID int, interval int) error {
 }
 
 func (mr MySQLRepo) SaveProbe(ID int, p Probe) error {
+	m, err := mr.Get(ID)
+	if m == nil {
+		log.Error().Msg("measure does not exist")
+		return nil
+	}
 	q := "INSERT INTO Probes (MeasurementId, Response, Duration, CreatedAt) " +
 		"VALUES (?, ?, ?, ?)"
 
-	_, err := mr.DB.Exec(q, ID, p.response, p.duration, p.createdAt)
+	_, err = mr.DB.Exec(q, ID, p.response, p.duration, p.createdAt)
 	if err != nil {
 		return err
 	}

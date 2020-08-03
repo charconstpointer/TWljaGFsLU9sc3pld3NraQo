@@ -34,6 +34,9 @@ func (s *Impr) AddProbe(_ context.Context, r *AddProbeRequest) (*AddProbeRespons
 		Msg("received new probe result")
 	p := measure.NewProbe(r.Response, r.Duration, r.CreatedAt)
 	err := s.measures.SaveProbe(int(r.MeasureID), *p)
+	if err != nil {
+		return &AddProbeResponse{}, nil
+	}
 	m, err := s.measures.Get(int(r.MeasureID))
 
 	if err != nil {

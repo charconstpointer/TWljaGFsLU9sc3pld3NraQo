@@ -2,10 +2,10 @@ package measure
 
 //Measure represents set of properties for a worker to fetch and work on
 type Measure struct {
-	id       int
-	url      string
-	interval int
-	probes   []*Probe
+	ID       int
+	URL      string
+	Interval int
+	Probes   []*Probe
 }
 
 //Probe represents single measurement of a given measure configuration
@@ -54,14 +54,14 @@ func (p *Probe) AsDto() ProbeDto {
 //NewMeasure is
 func NewMeasure(url string, interval int) *Measure {
 	return &Measure{
-		url:      url,
-		interval: interval,
+		URL:      url,
+		Interval: interval,
 	}
 }
 
 //AddProbe adds new probe
 func (m *Measure) AddProbe(p *Probe) {
-	m.probes = append(m.probes, p)
+	m.Probes = append(m.Probes, p)
 }
 
 //CreateMeasure represents model that user has to provide in order to create new measure
@@ -80,17 +80,17 @@ type Dto struct {
 //AsEntity converts CreateMeasure request to a domain entity
 func (c CreateMeasure) AsEntity() *Measure {
 	return &Measure{
-		url:      c.URL,
-		interval: c.Interval,
+		URL:      c.URL,
+		Interval: c.Interval,
 	}
 }
 
 //Probes returns probes for a given measure
-func (m *Measure) Probes() []*Probe {
-	return m.probes
+func (m *Measure) GetProbes() []*Probe {
+	return m.Probes
 }
 
 //AsDto returns a measure dto
 func (m *Measure) AsDto() Dto {
-	return Dto{ID: m.id, URL: m.url, Interval: m.interval}
+	return Dto{ID: m.ID, URL: m.URL, Interval: m.Interval}
 }

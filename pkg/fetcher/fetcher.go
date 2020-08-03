@@ -56,13 +56,28 @@ func (s Impr) CreateOrUpdate(createMeasure measure.CreateMeasure) (int, error) {
 		if err != nil {
 			return -1, err
 		}
-		s.Edt <- *m
+		select {
+		case s.Edt <- *m:
+			log.Info().Msgf("notification sent  %d", m.ID)
+		default:
+			log.Info().Msgf("skipping sending notification")
+		}
 		return mID, nil
 	}
 	m = measure.NewMeasure(createMeasure.URL, createMeasure.Interval)
-	s.Add <- *m
-	return s.measures.Save(m)
+	ID, err := s.measures.Save(m)
+	if err != nil {
+		return ID, err
+	}
 
+	m.ID = ID
+	select {
+	case s.Add <- *m:
+		log.Info().Msgf("notification sent  %d", ID)
+	default:
+		log.Info().Msgf("skipping sending notification")
+	}
+	return m.ID, nil
 }
 
 func (s Impr) CreateMeasure(m measure.CreateMeasure) (int, error) {
@@ -110,7 +125,7 @@ func (s Impr) GetHistory(measureID int) ([]measure.ProbeDto, error) {
 	}
 
 	var dtos []measure.ProbeDto
-	for _, p := range m.Probes() {
+	for _, p := range m.Probes {
 		dtos = append(dtos, p.AsDto())
 	}
 	return dtos, nil

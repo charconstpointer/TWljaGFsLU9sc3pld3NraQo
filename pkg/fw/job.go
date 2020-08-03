@@ -2,6 +2,7 @@ package fw
 
 import (
 	"context"
+	"fmt"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 	"io/ioutil"
@@ -27,6 +28,7 @@ func NewJob(id int, url string, interval int) Job {
 		id:       id,
 		url:      url,
 		interval: interval,
+		d:        make(chan struct{}),
 	}
 }
 
@@ -39,6 +41,9 @@ func (j Job) Exec(ctx context.Context, res chan<- Result) error {
 		t := time.NewTicker(time.Duration(j.interval) * time.Second)
 		for {
 			select {
+			case _ = <-j.d:
+				log.Warn().Msg("case _ = <-j.d:case _ = <-j.d:case _ = <-j.d:case _ = <-j.d:case _ = <-j.d:")
+				return fmt.Errorf("something something")
 			case _ = <-t.C:
 				log.Info().
 					Str("URL", j.url).
@@ -79,8 +84,7 @@ func (j Job) Exec(ctx context.Context, res chan<- Result) error {
 					Msg("finished successfully")
 			case _ = <-ctx.Done():
 				return ctx.Err()
-			case _ = <-j.d:
-				return nil
+
 			}
 		}
 	})
