@@ -9,12 +9,12 @@ import (
 )
 
 func (s *Fetch) GetMeasures(context.Context, *GetMeasuresRequest) (*GetMeasuresResponse, error) {
-	msrs, err := s.measures.GetAll()
+	measures, err := s.measures.GetAll()
 	if err != nil {
 		return nil, err
 	}
 	var m []*Measure
-	for _, msr := range msrs {
+	for _, msr := range measures {
 		dto := msr.AsDto()
 		m = append(m, &Measure{
 			ID:       int32(dto.ID),

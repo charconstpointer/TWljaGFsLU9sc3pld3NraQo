@@ -32,54 +32,22 @@ func NewJob(id int, url string, interval int) Job {
 }
 
 func (j Job) Exec(ctx context.Context, res chan<- Result) error {
+
+	//i dont like this, could probably pass httpclient as a dependency, and sync.pool them in the worker?
 	c := http.Client{
 		Timeout: 5 * time.Second,
 	}
+
 	g := errgroup.Group{}
 	g.Go(func() error {
 		t := time.NewTicker(time.Duration(j.interval) * time.Second)
 		for {
 			select {
 			case _ = <-j.d:
+				//job termination
 				return nil
 			case _ = <-t.C:
-				log.Info().
-					Str("URL", j.url).
-					Int("interval", j.interval).
-					Msg("fetching")
-
-				start := time.Now()
-				r, err := c.Get(j.url)
-				stop := time.Since(start)
-
-				if err != nil {
-					log.Warn().Msgf("request to %s failed", j.url)
-					continue
-				}
-
-				b, _ := ioutil.ReadAll(r.Body)
-				rs := Result{
-					ID:      j.id,
-					URL:     j.url,
-					Res:     string(b),
-					Dur:     stop.Seconds(),
-					Success: true,
-					Date:    time.Now(),
-				}
-
-				select {
-				case res <- rs:
-				default:
-					log.Warn().
-						Str("URL", j.url).
-						Int("interval", j.interval).
-						Msg("could not save the job's outcome, channel is full")
-				}
-
-				log.Info().
-					Str("URL", j.url).
-					Int("interval", j.interval).
-					Msg("finished successfully")
+				j.onTick(c, res)
 			case _ = <-ctx.Done():
 				return ctx.Err()
 
@@ -108,4 +76,44 @@ func (j Job) Stop() {
 
 func (j Job) Id() int {
 	return j.id
+}
+
+func (j Job) onTick(c http.Client, res chan<- Result) {
+	log.Info().
+		Str("URL", j.url).
+		Int("interval", j.interval).
+		Msg("fetching")
+
+	start := time.Now()
+	r, err := c.Get(j.url)
+	stop := time.Since(start)
+
+	if err != nil {
+		log.Warn().Msgf("request to %s failed", j.url)
+		return
+	}
+
+	b, _ := ioutil.ReadAll(r.Body)
+	rs := Result{
+		ID:      j.id,
+		URL:     j.url,
+		Res:     string(b),
+		Dur:     stop.Seconds(),
+		Success: true,
+		Date:    time.Now(),
+	}
+
+	select {
+	case res <- rs:
+	default:
+		log.Warn().
+			Str("URL", j.url).
+			Int("interval", j.interval).
+			Msg("could not save the job's outcome, channel is full")
+	}
+
+	log.Info().
+		Str("URL", j.url).
+		Int("interval", j.interval).
+		Msg("finished successfully")
 }
