@@ -6,7 +6,8 @@ import (
 )
 
 type MeasuresMock struct {
-	m []*measure.Measure
+	m       []*measure.Measure
+	counter int
 }
 
 func NewMeasuresMock() *MeasuresMock {
@@ -15,21 +16,27 @@ func NewMeasuresMock() *MeasuresMock {
 			ID:       1,
 			URL:      "https://wp.pl",
 			Interval: 13,
-			Probes:   make([]*measure.Probe, 0),
+			Probes:   []*measure.Probe{&measure.Probe{}, &measure.Probe{}, &measure.Probe{}},
 		},
 		{
 			ID:       2,
 			URL:      "https://google.com",
 			Interval: 13,
-			Probes:   make([]*measure.Probe, 0),
+			Probes:   []*measure.Probe{&measure.Probe{}, &measure.Probe{}},
 		},
 	}
-	return &MeasuresMock{m: m}
+
+	return &MeasuresMock{
+		m:       m,
+		counter: 2,
+	}
 }
 
 func (m2 MeasuresMock) Save(m *measure.Measure) (int, error) {
+	m2.counter++
+	m.ID = m2.counter
 	m2.m = append(m2.m, m)
-	return 1, nil
+	return m.ID, nil
 }
 
 func (m2 MeasuresMock) SaveProbe(ID int, p measure.Probe) error {

@@ -1,90 +1,86 @@
 package fetcher
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/measure"
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/measure/mock"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 )
 
-func TestFetch_HandleCreateMeasure(t *testing.T) {
+func TestFetch_CreateOrUpdate(t *testing.T) {
 	repo := mock.NewMeasuresMock()
 	fetch := NewImpr(context.Background(), repo)
 	cm := measure.CreateMeasure{
-		URL:      "https:foobar.com",
-		Interval: 13,
+		URL:      "https://foobar.com",
+		Interval: 12,
 	}
-	body, err := json.Marshal(cm)
+	id, err := fetch.CreateOrUpdate(cm)
 	if err != nil {
-		t.Error("json error")
-	}
-	req, err := http.NewRequest("POST", "/api/fetcher", bytes.NewReader(body))
-	if err != nil {
-		t.Fatal(err)
+		t.Error(err.Error())
 	}
 
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(fetch.HandleCreateMeasure)
-	handler.ServeHTTP(rr, req)
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
+	if id != 3 {
+		t.Errorf("wrong id returned, expected 3, got %d", id)
+	}
+
+	cm = measure.CreateMeasure{
+		URL:      "https://foobar.com",
+		Interval: 15,
+	}
+	id, err = fetch.CreateOrUpdate(cm)
+	if err != nil {
+		t.Error(err.Error())
+	}
+	if id != 3 {
+		t.Errorf("id should remain unchanged, got %d", id)
 	}
 }
 
-func TestFetch_HandleGetAllMeasures(t *testing.T) {
+func TestFetch_DeleteMeasure(t *testing.T) {
 	repo := mock.NewMeasuresMock()
 	fetch := NewImpr(context.Background(), repo)
-	req, err := http.NewRequest("GET", "/api/fetcher", nil)
+	id := 1
+
+	err := fetch.DeleteMeasure(id)
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err.Error())
+	}
+	m, err := fetch.GetAllMeasures()
+	if err != nil {
+		t.Error(err.Error())
+	}
+	for _, ms := range m {
+		if ms.ID == id {
+			t.Errorf("measure with id %d was not deleted", id)
+		}
 	}
 
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(fetch.HandleGetAllMeasures)
-	handler.ServeHTTP(rr, req)
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
+	err = fetch.DeleteMeasure(id)
+	if err == nil {
+		t.Errorf("err is nil, expected an error because measure with id %d is no longer present", id)
 	}
 }
 
-//This test will fail, because i'd have to setup chi router to parse id from the route, will fix that later
-func TestFetch_HandleDeleteMeasure(t *testing.T) {
-	//repo := mock.NewMeasuresMock()
-	//fetch := NewImpr(context.Background(), repo)
-	//req, err := http.NewRequest("DELETE", "/api/fetcher/1", nil)
-	//if err != nil {
-	//	t.Fatal(err)
-	//}
-	//
-	//rr := httptest.NewRecorder()
-	//handler := http.HandlerFunc(fetch.HandleDeleteMeasure)
-	//handler.ServeHTTP(rr, req)
-	//if status := rr.Code; status != http.StatusOK {
-	//	t.Errorf("handler returned wrong status code: got %v want %v",
-	//		status, http.StatusOK)
-	//}
+func TestFetch_GetAllMeasures2(t *testing.T) {
+	repo := mock.NewMeasuresMock()
+	fetch := NewImpr(context.Background(), repo)
+	m, err := fetch.GetAllMeasures()
+	if err != nil {
+		t.Error(err.Error())
+	}
+	if len(m) != 2 {
+		t.Errorf("incorrect amount of measures was returned expected 2, got %d", len(m))
+	}
 }
 
-//This test will fail, because i'd have to setup chi router to parse id from the route, will fix that later
-func TestFetch_GetAllMeasures(t *testing.T) {
-	//repo := mock.NewMeasuresMock()
-	//fetch := NewImpr(context.Background(), repo)
-	//req, err := http.NewRequest("DELETE", "/api/fetcher/1", nil)
-	//if err != nil {
-	//	t.Fatal(err)
-	//}
-	//
-	//rr := httptest.NewRecorder()
-	//handler := http.HandlerFunc(fetch.HandleGetHistory)
-	//handler.ServeHTTP(rr, req)
-	//if status := rr.Code; status != http.StatusOK {
-	//	t.Errorf("handler returned wrong status code: got %v want %v",
-	//		status, http.StatusOK)
-	//}
+func TestFetch_GetHistory(t *testing.T) {
+	repo := mock.NewMeasuresMock()
+	fetch := NewImpr(context.Background(), repo)
+	p, err := fetch.GetHistory(1)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	if len(p) != 3 {
+		t.Errorf("incorrect amount of probes was returned expected 3, got %d", len(p))
+	}
 }

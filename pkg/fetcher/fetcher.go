@@ -18,8 +18,6 @@ type Fetch struct {
 
 type Fetcher interface {
 	CreateOrUpdate(createMeasure measure.CreateMeasure) (int, error)
-	CreateMeasure(measure.CreateMeasure) (int, error)
-	UpdateMeasure(measure *measure.Measure, interval int) (int, error)
 	DeleteMeasure() error
 	GetAllMeasures() []measure.Dto
 	GetHistory(measureID int) ([]measure.ProbeDto, error)
@@ -78,16 +76,6 @@ func (s Fetch) CreateOrUpdate(createMeasure measure.CreateMeasure) (int, error) 
 		log.Info().Msgf("skipping sending notification")
 	}
 	return m.ID, nil
-}
-
-func (s Fetch) CreateMeasure(m measure.CreateMeasure) (int, error) {
-	nm := measure.NewMeasure(m.URL, m.Interval)
-	id, err := s.measures.Save(nm)
-	return id, err
-}
-
-func (s Fetch) UpdateMeasure(measure *measure.Measure, interval int) (int, error) {
-	return s.UpdateMeasure(measure, interval)
 }
 
 func (s Fetch) DeleteMeasure(ID int) error {
