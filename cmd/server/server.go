@@ -3,6 +3,10 @@ package main
 import (
 	"context"
 	"flag"
+	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher/router"
+	"github.com/common-nighthawk/go-figure"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/jmoiron/sqlx"
 	"net"
 	"net/http"
 	"os"
@@ -12,7 +16,6 @@ import (
 	"time"
 
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher"
-	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/fetcher/router"
 	"github.com/charconstpointer/TWljaGFsLU9sc3pld3NraQo/pkg/measure"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -22,7 +25,7 @@ import (
 
 var (
 	httpPort = flag.Int("http", 8080, "port to listen on for incoming http requests")
-	grpcPort = flag.Int("grpc", 8082, "port to listen on for incoming grpc requests")
+	grpcPort = flag.Int("grpc", 8084, "port to listen on for incoming grpc requests")
 
 	grpcServer *grpc.Server
 	httpServer *http.Server
@@ -30,7 +33,7 @@ var (
 
 func main() {
 	flag.Parse()
-
+	figure.NewColorFigure("fetcher", "slant", "purple", true).Print()
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(interrupt)
@@ -42,8 +45,15 @@ func main() {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	repo := measure.NewMeasuresRepo()
-	srv := fetcher.NewFetcher(ctx, repo)
+	db, err := sqlx.Connect("mysql", "root:password@tcp(127.0.0.1:3306)/foobar")
+	if err != nil {
+		log.Error().Msg("can't connect to mysql")
+		os.Exit(1)
+	}
+	repo := measure.MySQLRepo{
+		DB: db,
+	}
+	srv := fetcher.NewImpr(ctx, repo)
 
 	g, ctx := errgroup.WithContext(ctx)
 
@@ -91,10 +101,10 @@ func main() {
 		grpcServer.Stop()
 	}
 
-	err := g.Wait()
+	err = g.Wait()
 	if err != nil {
 		log.Error().Err(err)
-		os.Exit(2)
+		os.Exit(1)
 	}
 
 }

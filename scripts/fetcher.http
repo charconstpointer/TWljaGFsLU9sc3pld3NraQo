@@ -3,7 +3,7 @@ Accept: application/json
 
 ###
 
-GET http://localhost:8080/api/fetcher/0
+GET http://localhost:8080/api/fetcher/1
 Accept: application/json
 ###
 
@@ -15,6 +15,6 @@ POST http://localhost:8080/api/fetcher
 Content-Type: application/json
 
 {
-        "url":"https://latozradiem.pl/api/stars",
-        "interval":4
+        "url":"https://latozradiem.pl/api/articles",
+        "interval":15
 }

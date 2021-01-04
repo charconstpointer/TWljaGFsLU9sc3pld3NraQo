@@ -1,14 +1,17 @@
-version: "3"
+version: '3.3'
 services:
-  redis:
-    image: "redis:5"
+  db:
+    image: mysql:5.7
+    restart: always
+    environment:
+      MYSQL_DATABASE: 'db'
+      MYSQL_USER: 'user'
+      MYSQL_PASSWORD: 'password'
+      MYSQL_ROOT_PASSWORD: 'password'
     ports:
-      - 6379:6379
-  mongodb_container:
-    image: mongo:4
-    ports:
-      - 27017:27017
+      - '3306:3306'
     volumes:
-      - mongo:/data/db
+      - my-db:/var/lib/mysql
+# Names our volume
 volumes:
-  mongo:
+  my-db:

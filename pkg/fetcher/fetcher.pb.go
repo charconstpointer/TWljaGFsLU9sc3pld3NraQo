@@ -260,6 +260,9 @@ func (*ListenForChangesRequest) Descriptor() ([]byte, []int) {
 	return file_pkg_fetcher_pb_fetcher_proto_rawDescGZIP(), []int{3}
 }
 
+//I know im duplicating data here, measureID and id inside a measure,
+//but the idea behind that was, that when im sending DELETED event
+//im not sending the whole measure, so user can still identify correct measure
 type ListenForChangesResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
